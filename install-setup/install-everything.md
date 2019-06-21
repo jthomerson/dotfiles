@@ -13,12 +13,34 @@ https://dev.to/therealdanvega/new-macbook-setup-for-developers-2nma
 xcode-select --install
 ```
 
+If you get an error that says "Can't install the software" you can go to
+https://developer.apple.com/downloads/index.action and download the tools and
+install them manually.
+
 
 ### Install Homebrew
+
+Note that this script must be run with a user that can `sudo`.
 
 ```
 /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
+
+If the user you ran the previous command as is not your primary user (i.e. it
+was a user who could `sudo`, but your day-to-day primary user can not `sudo`),
+but you want your primary user to be able to install packages with Homebrew,
+you need to also follow these steps:
+
+```
+# As admin user:
+sudo chown -R YOURUSERNAMEHERE /usr/local/*
+
+# Then, switch back to your primary user, perhaps by running `exit`. Then:
+/usr/local/bin/brew update --force
+```
+
+At this point you should be set up and able to install packages using Homebrew
+as your primary user.
 
 
 ### Upgrade bash
@@ -45,15 +67,9 @@ And then make it your shell:
 chsh -s /usr/local/bin/bash
 ```
 
-
-### Bash profile
-
-Set up the bash profile to source the shared one from this repo:
-
-```
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-echo "source '${SCRIPT_DIR}/profile.sh'" >> ~/.bash_profile
-```
+If your user account does not have `sudo` permissions, you can also `Cmd+,` in
+Terminal and change the setting from "Shells open with: Default login shell" to
+"Command" and enter `/usr/local/bin/bash`.
 
 
 ### Install git
@@ -66,6 +82,16 @@ Install git and its bash completion. See also:
 
 ```
 brew install git bash-completion
+```
+
+
+### Bash profile
+
+Set up the bash profile to source the shared one from this repo:
+
+```
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+echo "source '${SCRIPT_DIR}/profile.sh'" >> ~/.bash_profile
 ```
 
 ### Miscellaneous Tools
