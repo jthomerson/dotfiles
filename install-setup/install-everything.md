@@ -85,25 +85,77 @@ brew install git bash-completion
 ```
 
 
-### Bash profile
+### Install this repo
 
-Set up the bash profile to source the shared one from this repo:
+This repo has all the necessary dotfiles in it.
 
 ```
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-echo "source '${SCRIPT_DIR}/profile.sh'" >> ~/.bash_profile
+mkdir -p ~/code/jthomerson
+pushd ~/code/jthomerson
+git clone git@github.com:jthomerson/dotfiles.git
 ```
 
-### Miscellaneous Tools
+
+### Configure bash profile
+
+Set up the bash profile.
+
+If one does not exist yet, you may want to do this. This will reset the `PATH` variable to
+its default so that each time you reset your shell, you don't end up appending your old
+PATH to your new one. Of course, if your bash profile already has other things in it, you
+may not want to do this, or you may want to put this at the very top of the file.
+
+```
+echo 'export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"' >> ~/.bash_profile
+```
+
+Then we want to definitely set up the profile to source this script:
+
+```
+echo "source '~/code/jthomerson/dotfiles/bash/profile.sh'" >> ~/.bash_profile
+```
+
+
+### Install miscellaneous tools
 
 Install some miscellaneous tools that you might like:
 
 ```
-brew install ag colordiff tree
+brew install \
+   ag \
+   colordiff \
+   tree \
+   corkscrew \
+   ccrypt \
+   hugo \
+   imagemagick \
+   ohcount \
+   tmux \
+   thrift \
+   youtube-dl \
+   remind101/formulae/assume-role
+```
+
+These tools require additional entries in your profile to update your `PATH`
+environment (see [../bash/path.sh](../bash/path.sh)).
+
+```
+brew install coreutils
+brew install grep
+brew install openssl
+brew install python
+brew install ffmpeg
+```
+
+And now some GUI-based tools:
+
+```
+brew cask install sublime-text
 brew cask install google-chrome
 brew cask install firefox
 brew cask install visual-studio-code
 brew cask install docker
+brew cask install db-browser-for-sqlite
 ```
 
 
