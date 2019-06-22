@@ -22,7 +22,6 @@ alias ll='ls -alh'
 alias cdc='cd && clear'
 alias popall='cd "$(dirs -l -0)" && dirs -c'
 
-alias pbcopy='reattach-to-user-namespace pbcopy'
 alias uuidcb="uuidgen | tr 'A-Z' 'a-z' | tr -d '\n' | pbcopy"
 alias md5cb="dd if=/dev/random bs=2048 count=1 2>/dev/null | md5sum | sed 's| .*||' | tr -d '\n' | pbcopy"
 
