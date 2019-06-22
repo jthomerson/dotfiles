@@ -166,6 +166,17 @@ brew cask install db-browser-for-sqlite
 ```
 
 
+### Upgrade Vim and configure it
+
+Vim installs Ruby, which requires additional entries in your profile to update
+your `PATH` environment if you want to use the Homebrew-installed Ruby (see
+[../bash/path.sh](../bash/path.sh)).
+
+```
+brew install vim
+```
+
+
 ### Install Node Version Manager (nvm)
 
 Note: you should check what the latest version is by visiting
