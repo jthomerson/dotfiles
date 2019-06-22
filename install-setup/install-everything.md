@@ -84,6 +84,13 @@ Install git and its bash completion. See also:
 brew install git bash-completion
 ```
 
+Now configure it:
+
+```
+git config --global user.email "jeremy@thomersonfamily.com"
+git config --global user.name "Jeremy Thomerson"
+```
+
 
 ### Install this repo
 
