@@ -194,3 +194,17 @@ https://github.com/nvm-sh/nvm#installation-and-update
 ```
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
 ```
+
+
+### Install Antivirus
+
+If you have a need (e.g. corporate policy for your work VPN, etc) to install an
+antivirus software, you can use [Avira for
+free](https://www.avira.com/en/free-antivirus-mac). If, like me, you want to
+install everything possible via CLI, just do this:
+
+```
+brew cask install avira-antivirus
+```
+
+Then follow the on-screen instructions.
