@@ -208,3 +208,6 @@ brew cask install avira-antivirus
 ```
 
 Then follow the on-screen instructions.
+
+Note: There is no brew installer for JunOS Pulse, if that's what your company
+uses. You'll need to download that from your company and manually install it.
