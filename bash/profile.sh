@@ -45,3 +45,7 @@ export HISTFILESIZE=20000
 
 # append to the history file, don't overwrite it
 shopt -s histappend
+
+# Auto-completion for Grunt
+# https://github.com/gruntjs/grunt-cli#shell-tab-auto-completion
+eval "$(grunt --completion=bash)"
