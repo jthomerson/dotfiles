@@ -8,3 +8,5 @@ killScreenSaver() {
    echo "Killing process ${SS_PROC_ID}"
    kill -9 $SS_PROC_ID
 }
+
+alias TitleCase='awk '"'"'{for(j=1;j<=NF;j++){ $j=toupper(substr($j,1,1)) substr($j,2) }}1'"'"
