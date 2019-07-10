@@ -210,15 +210,62 @@ users" option is selected.
 
 #### Alternate Port
 
-If you need to run SSH on an alternate port for any reason, here's how:
+If you need to run SSH on an alternate port for any reason, you should see
+https://apple.stackexchange.com/a/335329 to see the list of ways that it's possible to do
+this. I typically use method two (making a new launch daemon) so that I can run SSH on the
+standard port and an alternate port.
+
+Here's the contents of my `/Library/LaunchDaemons/ssh2.plist`:
 
 ```
-sudo vim /etc/services
-# Replace 22 with your port of choice (two lines - UDP and TCP)
-# Restart SSH:
-sudo launchctl unload /System/Library/LaunchDaemons/ssh.plist
-sudo launchctl load /System/Library/LaunchDaemons/ssh.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Disabled</key>
+	<true/>
+	<key>Label</key>
+	<string>com.openssh.sshd2</string>
+	<key>Program</key>
+	<string>/usr/libexec/sshd-keygen-wrapper</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/sbin/sshd</string>
+		<string>-i</string>
+	</array>
+	<key>Sockets</key>
+	<dict>
+		<key>Listeners</key>
+		<dict>
+			<key>SockServiceName</key>
+			<string>2222</string>
+		</dict>
+	</dict>
+	<key>inetdCompatibility</key>
+	<dict>
+		<key>Wait</key>
+		<false/>
+		<key>Instances</key>
+		<integer>42</integer>
+	</dict>
+	<key>StandardErrorPath</key>
+	<string>/dev/null</string>
+	<key>SHAuthorizationRight</key>
+	<string>system.preferences</string>
+	<key>POSIXSpawnType</key>
+	<string>Interactive</string>
+</dict>
+</plist>
 ```
+
+In case the tutorial / Stack Overflow answer disappears later, the method is to
+(as root):
+
+   * Create the file described above
+   * `launchctl load -w /Library/LaunchDaemons/ssh2.plist`
+
+If you want to unload / stop it,
+`launchctl unload /Library/LaunchDaemons/ssh2.plist`
 
 
 ### Install Node Version Manager (nvm)
