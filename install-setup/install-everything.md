@@ -209,8 +209,8 @@ If you need to run SSH on an alternate port for any reason, here's how:
 sudo vim /etc/services
 # Replace 22 with your port of choice (two lines - UDP and TCP)
 # Restart SSH:
-launchctl unload /System/Library/LaunchDaemons/ssh.plist
-launchctl load /System/Library/LaunchDaemons/ssh.plist
+sudo launchctl unload /System/Library/LaunchDaemons/ssh.plist
+sudo launchctl load /System/Library/LaunchDaemons/ssh.plist
 ```
 
 
