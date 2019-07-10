@@ -157,6 +157,14 @@ brew install ffmpeg
 
 And now some GUI-based tools:
 
+Note: if you are running brew as a *non-admin* user (someone who can not `sudo`), then you
+will need to install these applications to your user's `~/Applications` directory. To
+configure brew to always do this for all cask installs, do this:
+
+```
+echo 'export HOMEBREW_CASK_OPTS="--appdir=~/Applications"' >> ~/.bash_profile
+```
+
 ```
 brew cask install sublime-text
 brew cask install google-chrome
