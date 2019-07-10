@@ -187,6 +187,25 @@ brew install vim
 ```
 
 
+### Configure SSH
+
+To enable SSH access to the machine, go to System Preferences > Sharing >
+Remote Login. Make sure it is enabled, and your user whitelisted if "only these
+users" option is selected.
+
+#### Alternate Port
+
+If you need to run SSH on an alternate port for any reason, here's how:
+
+```
+sudo vim /etc/services
+# Replace 22 with your port of choice (two lines - UDP and TCP)
+# Restart SSH:
+launchctl unload /System/Library/LaunchDaemons/ssh.plist
+launchctl load /System/Library/LaunchDaemons/ssh.plist
+```
+
+
 ### Install Node Version Manager (nvm)
 
 Note: you should check what the latest version is by visiting
