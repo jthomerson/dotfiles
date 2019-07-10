@@ -195,6 +195,13 @@ brew install vim
 ```
 
 
+### Configure VNC
+
+To enable VNC access to the machine, go to System Preferences > Sharing >
+Remote Management. Make sure it is enabled, and your user whitelisted if "only these
+users" option is selected.
+
+
 ### Configure SSH
 
 To enable SSH access to the machine, go to System Preferences > Sharing >
