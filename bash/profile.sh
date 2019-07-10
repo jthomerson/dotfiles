@@ -48,4 +48,6 @@ shopt -s histappend
 
 # Auto-completion for Grunt
 # https://github.com/gruntjs/grunt-cli#shell-tab-auto-completion
-eval "$(grunt --completion=bash)"
+if [ -e "$(command -v grunt)" ]; then
+   eval "$(grunt --completion=bash)"
+fi
