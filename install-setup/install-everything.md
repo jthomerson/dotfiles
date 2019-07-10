@@ -119,7 +119,7 @@ echo 'export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"' >> ~/.bash_pro
 Then we want to definitely set up the profile to source this script:
 
 ```
-echo "source '~/code/jthomerson/dotfiles/bash/profile.sh'" >> ~/.bash_profile
+echo 'source ~/code/jthomerson/dotfiles/bash/profile.sh' >> ~/.bash_profile
 ```
 
 
