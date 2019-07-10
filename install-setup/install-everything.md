@@ -223,6 +223,13 @@ https://github.com/nvm-sh/nvm#installation-and-update
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
 ```
 
+Then you'll want to at least set up your default node and NPM versions, e.g.:
+
+```
+nvm install 8.10
+npm install --global npm@6.4.1
+```
+
 
 ### Install Antivirus
 
