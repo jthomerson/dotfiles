@@ -9,4 +9,17 @@ killScreenSaver() {
    kill -9 $SS_PROC_ID
 }
 
+silentPushd() {
+   if [ -d "$1" ]; then
+      pushd $1 2>&1 >> /dev/null
+   else
+      echo "No such dir: $1"
+      return 1
+   fi
+}
+
+silentPopd() {
+   popd 2>&1 >> /dev/null
+}
+
 alias TitleCase='awk '"'"'{for(j=1;j<=NF;j++){ $j=toupper(substr($j,1,1)) substr($j,2) }}1'"'"
