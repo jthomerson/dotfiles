@@ -300,3 +300,21 @@ Then follow the on-screen instructions.
 
 Note: There is no brew installer for JunOS Pulse, if that's what your company
 uses. You'll need to download that from your company and manually install it.
+
+
+### Install GitHub CLI
+
+The [GitHub CLI tool](https://hub.github.com/) is handy to automate some tasks, and
+especially for calling the GitHub APIs from the CLI.
+
+```
+brew install hub
+hub api
+# Follow the prompts to log in
+```
+
+Now you can do things like:
+
+```
+hub api --paginate 'user/repos?affiliation=owner
+```
