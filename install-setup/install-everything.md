@@ -131,6 +131,7 @@ Install some miscellaneous tools that you might like:
 brew install \
    telnet \
    ag \
+   jq \
    colordiff \
    tree \
    corkscrew \
