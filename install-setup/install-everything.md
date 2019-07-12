@@ -167,6 +167,7 @@ echo 'export HOMEBREW_CASK_OPTS="--appdir=~/Applications"' >> ~/.bash_profile
 ```
 
 ```
+brew cask install iterm2
 brew cask install sublime-text
 brew cask install google-chrome
 brew cask install firefox
