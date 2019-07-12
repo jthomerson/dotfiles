@@ -30,6 +30,9 @@ alias rmNodeModules='find . -name node_modules \! -path '"'"'*/node_modules/*'"'
 alias n='echo "Node: $(node --version)"; echo "NPM:  $(npm --version)"'
 alias npmGlobalList="npm -g list | grep '^\(├─┬\|└─┬\)'"
 
+# Directory-based aliases
+alias dotfiles='pushd ~/code/jthomerson/dotfiles'
+
 # External helpers
 source "${SCRIPT_DIR}/utilities.sh"
 source "${SCRIPT_DIR}/git.sh"
