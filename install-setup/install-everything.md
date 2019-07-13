@@ -142,7 +142,8 @@ brew install \
    tmux \
    thrift \
    youtube-dl \
-   remind101/formulae/assume-role
+   remind101/formulae/assume-role \
+   reattach-to-user-namespace
 ```
 
 These tools require additional entries in your profile to update your `PATH`
