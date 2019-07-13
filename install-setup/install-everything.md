@@ -322,3 +322,15 @@ Now you can do things like:
 ```
 hub api --paginate 'user/repos?affiliation=owner
 ```
+
+
+### Configure iMessage
+
+Sign in with your iCloud account.
+
+
+### Sync Google Contacts With OSX
+
+   * Open the Contacts app
+   * Select Contacts > Add Account from the menu
+   * Click the Google option, and follow the prompts to connect
