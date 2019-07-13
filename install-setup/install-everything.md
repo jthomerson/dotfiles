@@ -334,3 +334,17 @@ Sign in with your iCloud account.
    * Open the Contacts app
    * Select Contacts > Add Account from the menu
    * Click the Google option, and follow the prompts to connect
+
+
+### Configure iTerm2
+
+Once you install [iTerm2](https://www.iterm2.com/), you will probably want to configure it
+to allow for jumping / deleting back a word (`Opt+Arrows`, `Opt+Delete`), or a line
+(`Cmd+Arrows`, `Cmd+Delete`). There's a great [Stack Overflow
+answer](https://stackoverflow.com/a/22312856) on how to do this. But, since I've already
+done that and saved my iTerm configuration into this repo, here's the steps to use the
+committed config:
+
+   * Open iTerm settings
+   * Check the "Load preferences from a custom folder or URL" option
+   * Browse to / enter the path (e.g. "~/code/jthomerson/dotfiles/app-settings/iterm2")
