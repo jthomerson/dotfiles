@@ -237,6 +237,8 @@ Here's the contents of my `/Library/LaunchDaemons/ssh2.plist`:
 		<string>/usr/sbin/sshd</string>
 		<string>-i</string>
 	</array>
+	<key>RunAtLoad</key>
+	<true/>
 	<key>Sockets</key>
 	<dict>
 		<key>Listeners</key>
