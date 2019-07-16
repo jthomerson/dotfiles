@@ -329,7 +329,10 @@ hub api --paginate 'user/repos?affiliation=owner
 
 ### Configure iMessage
 
-Sign in with your iCloud account.
+   * Sign in with your iCloud account on iMessage for Mac.
+   * Go to Settings > Messages on your iPhone and tap on Text Messages Forwarding.
+   * Enable forwarding to the computer(s) you want regular (non-iMessage) text messages
+     forwarded to.
 
 
 ### Sync Google Contacts With OSX
