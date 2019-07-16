@@ -188,6 +188,11 @@ brew cask install 1password-cli
 brew tap homebrew/cask-versions && brew cask install 1password-beta
 ```
 
+#### Python-Based (Non-Brew) Tools:
+
+```
+pip install yq
+```
 
 ### Upgrade Vim and configure it
 
