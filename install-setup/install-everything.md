@@ -301,7 +301,7 @@ npm install --global npm@6.4.1
 ### Install Global NPM Modules
 
 ```
-npm install grunt-cli \
+npm install --global grunt-cli \
    serverless \
    jwt-cli
 ```
