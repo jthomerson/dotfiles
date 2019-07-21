@@ -185,6 +185,7 @@ brew cask install keyboard-maestro
 brew cask install skitch
 brew cask install slack
 brew cask install 1password-cli
+brew cask install sketchup
 brew tap homebrew/cask-versions && brew cask install 1password-beta
 ```
 
