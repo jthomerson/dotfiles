@@ -25,3 +25,9 @@ silentPopd() {
 alias TitleCase='awk '"'"'{for(j=1;j<=NF;j++){ $j=toupper(substr($j,1,1)) substr($j,2) }}1'"'"
 alias lowercase='tr "A-Z" "a-z"'
 alias uppercase='tr "a-z" "A-Z"'
+
+unsetPattern() {
+   VARS=$(env | grep "${1}" | sed 's|=.*||' | tr '\n' ' ')
+   echo "Will unset: ${VARS}"
+   unset ${VARS}
+}
