@@ -186,6 +186,7 @@ brew cask install skitch
 brew cask install slack
 brew cask install 1password-cli
 brew cask install sketchup
+brew cask install google-cloud-sdk
 brew tap homebrew/cask-versions && brew cask install 1password-beta
 ```
 
