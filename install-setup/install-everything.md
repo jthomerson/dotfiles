@@ -129,6 +129,7 @@ Install some miscellaneous tools that you might like:
 
 ```
 brew install \
+   wget \
    awscli \
    telnet \
    ag \
