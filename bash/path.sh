@@ -107,3 +107,11 @@ export PATH="/usr/local/opt/sqlite/bin:$PATH"
 #   export LDFLAGS="-L/usr/local/opt/ruby/lib"
 #   export CPPFLAGS="-I/usr/local/opt/ruby/include"
 export PATH="/usr/local/opt/ruby/bin:$PATH"
+
+
+# From `brew cask install mactex`
+# Not explicitly stated in the install, but you need to add its bin
+# folder to the PATH:
+if [ -d /Library/TeX/texbin ]; then
+   export PATH="/Library/TeX/texbin:$PATH"
+fi
