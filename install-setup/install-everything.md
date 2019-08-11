@@ -309,6 +309,11 @@ npm install --global grunt-cli \
 ```
 
 
+### Install PDF Toolkit (pdftk)
+
+Run `./install-pdftk.sh`
+
+
 ### Install Antivirus
 
 If you have a need (e.g. corporate policy for your work VPN, etc) to install an
