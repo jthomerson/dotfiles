@@ -376,3 +376,18 @@ committed config:
    * Open iTerm settings
    * Check the "Load preferences from a custom folder or URL" option
    * Browse to / enter the path (e.g. "~/code/jthomerson/dotfiles/app-settings/iterm2")
+
+
+### Install JDK Version and Eclipse
+
+To install the latest versions of Java (OpenJDK) and Eclipse:
+
+```
+brew cask install java
+brew cask install eclipse-jee
+brew install maven
+```
+
+Note that this installs the latest version of Java. Presumably you can use the
+compatibility flags to determine which version you're targeting (rather than installing
+additional older versions).
