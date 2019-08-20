@@ -54,3 +54,5 @@ shopt -s histappend
 if [ -e "$(command -v grunt)" ]; then
    eval "$(grunt --completion=bash)"
 fi
+
+source "${SCRIPT_DIR}/prompt.sh"
