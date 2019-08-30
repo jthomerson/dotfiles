@@ -449,3 +449,9 @@ brew install maven
 Note that this installs the latest version of Java. Presumably you can use the
 compatibility flags to determine which version you're targeting (rather than installing
 additional older versions).
+
+## Mac App Store Apps
+
+I also install these, which I've purchased on the App Store:
+
+   * [Pixelmator](https://apps.apple.com/us/app/pixelmator/id407963104?mt=12)
