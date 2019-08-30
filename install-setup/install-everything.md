@@ -58,10 +58,13 @@ brew install bash
 Now make it available as a shell:
 
 ```
+# Note that you need to run this as a user who can sudo
 sudo bash -c 'echo /usr/local/bin/bash >> /etc/shells'
 ```
 
-And then make it your shell:
+And then make it your shell. You should run this as your primary user, as well as any
+other user that you want to use this updated version of bash as their shell (for example,
+if you have a second user that can sudo, you may want to run it as that user as well).
 
 ```
 chsh -s /usr/local/bin/bash
@@ -171,18 +174,39 @@ brew install python
 brew install ffmpeg
 ```
 
-And now some GUI-based tools:
+### Install cask-based (many GUI) tools
 
-Note: if you are running brew as a *non-admin* user (someone who can not `sudo`), then you
-will need to install these applications to your user's `~/Applications` directory. To
-configure brew to always do this for all cask installs, do this:
+Many GUI apps (i.e. Google Chrome, Firefox, Sublime, etc) can be installed by
+`brew` from _casks_. According to [brew](https://brew.sh), a cask is for:
 
-```
-echo 'export HOMEBREW_CASK_OPTS="--appdir=~/Applications"' >> ~/.bash_profile
-```
+> "To install, drag this icon..." no more. `brew cask` installs macOS apps,
+> fonts and plugins and other non-open source software.
 
-**If you do add the `HOMEBREW_CASK_OPTS` to your Bash profile, you need to start a new
-terminal session to inherit those changes before proceeding.**
+Note, though, that many casks install into your `/Applications` directory. That
+will require administrator access. So, if you are running brew as a *non-admin*
+user (someone who can not `sudo`), then you have two options:
+
+   * **Option 1:** Install these applications to your user's `~/Applications`
+     directory. To configure brew to always do this for all cask installs, do
+     this:
+
+        echo 'export HOMEBREW_CASK_OPTS="--appdir=~/Applications"' >> ~/.bash_profile
+
+      * If you do add the `HOMEBREW_CASK_OPTS` to your Bash profile, you need
+        to start a new terminal session to inherit those changes before
+        proceeding.
+      * Note that some applications don't seem to work well with this method:
+	 * 1Password X (Beta) has issues staying connected to your browser, and
+	   [incessantly complains][1pwx] about not being installed in
+           `/Applications`.
+	 * `maxtex` will *not* (cask) install unless you're an admin because it
+	   asks you to authenticate for a `sudo` command part way through its
+           installation.
+   * **Option 2:** Temporarily make your user an admin (so that your user can
+     `sudo`), or run cask installations from a second user that can `sudo`.
+
+[1pwx]: https://twitter.com/jthomerson/status/1158830446437982208
+
 
 ```
 brew cask install iterm2
