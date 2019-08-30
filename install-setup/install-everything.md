@@ -74,14 +74,8 @@ Terminal and change the setting from "Shells open with: Default login shell" to
 
 ### Install git
 
-Install git and its bash completion. See also:
-
- * https://salsa.debian.org/debian/bash-completion
- * https://github.com/bobthecow/git-flow-completion/wiki/Install-Bash-git-completion
-
-
 ```
-brew install git bash-completion
+brew install git
 ```
 
 Now configure it:
@@ -89,6 +83,19 @@ Now configure it:
 ```
 git config --global user.email "jeremy@thomersonfamily.com"
 git config --global user.name "Jeremy Thomerson"
+```
+
+
+### Install bash completion
+
+See also:
+
+ * https://salsa.debian.org/debian/bash-completion
+ * https://github.com/bobthecow/git-flow-completion/wiki/Install-Bash-git-completion
+
+
+```
+brew install bash-completion
 ```
 
 
