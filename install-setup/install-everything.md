@@ -6,6 +6,19 @@ https://dev.to/therealdanvega/new-macbook-setup-for-developers-2nma
 
 ## Prepare for Installations
 
+### Get Critical Files From Another Machine
+
+If you already have another Mac set up somewhere and you have critical secure
+files (e.g. `~/.ssh` with your keys, or `~/.aws` with credentials and/or role
+configurations), you should probably rsync them from that machine to this one.
+
+For example:
+
+```
+rsync -a --progress OTHER_MACHINE:~/.ssh ~/
+rsync -a --progress OTHER_MACHINE:~/.aws ~/
+```
+
 
 ### Set up Xcode Command Line Tools Package
 
