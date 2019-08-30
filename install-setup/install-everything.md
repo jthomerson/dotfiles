@@ -122,6 +122,8 @@ Then we want to definitely set up the profile to source this script:
 echo 'source ~/code/jthomerson/dotfiles/bash/profile.sh' >> ~/.bash_profile
 ```
 
+**Now start a new terminal session to inherit those changes.**
+
 
 ### Install miscellaneous tools
 
@@ -148,8 +150,11 @@ brew install \
    reattach-to-user-namespace
 ```
 
-These tools require additional entries in your profile to update your `PATH`
-environment (see [../bash/path.sh](../bash/path.sh)).
+Some tools require modifications to your `PATH` environment variable. Each of the tools I
+recommend installing in the next code block requires such a change. However, you will not
+need to manually make any changes to your `PATH` environment variable because the
+recommended changes are already made in [../bash/path.sh](../bash/path.sh). Every attempt
+has been made to make those changes safe even if you don't install these tools.
 
 ```
 brew install coreutils
@@ -168,6 +173,9 @@ configure brew to always do this for all cask installs, do this:
 ```
 echo 'export HOMEBREW_CASK_OPTS="--appdir=~/Applications"' >> ~/.bash_profile
 ```
+
+**If you do add the `HOMEBREW_CASK_OPTS` to your Bash profile, you need to start a new
+terminal session to inherit those changes before proceeding.**
 
 ```
 brew cask install iterm2
