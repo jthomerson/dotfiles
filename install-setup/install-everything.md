@@ -376,7 +376,7 @@ done that and saved my iTerm configuration into this repo, here's the steps to u
 committed config:
 
    * Open iTerm settings
-   * Check the "Load preferences from a custom folder or URL" option
+   * Check the "Load preferences from a custom folder or URL" option (under "General > Preferences")
    * Browse to / enter the path (e.g. "~/code/jthomerson/dotfiles/app-settings/iterm2")
 
 
