@@ -347,7 +347,7 @@ hub api
 Now you can do things like:
 
 ```
-hub api --paginate 'user/repos?affiliation=owner
+hub api --paginate 'user/repos?affiliation=owner'
 ```
 
 
