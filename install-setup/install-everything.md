@@ -56,6 +56,8 @@ At this point you should be set up and able to install packages using Homebrew
 as your primary user.
 
 
+## Install Essentials
+
 ### Upgrade bash
 
 First, install the latest version of bash.
@@ -147,6 +149,8 @@ echo 'source ~/code/jthomerson/dotfiles/bash/profile.sh' >> ~/.bash_profile
 
 **Now start a new terminal session to inherit those changes.**
 
+
+## Install Other Apps and Tools
 
 ### Install miscellaneous tools
 
