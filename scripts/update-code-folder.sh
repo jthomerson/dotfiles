@@ -47,7 +47,7 @@ updateGitHubRepo() {
    fi
 }
 
-updateGitlabRepos() {
+updateGitLabRepos() {
    DIR="${1}"
    BASE_URL="${2}"
    API_KEY="${3}"
@@ -104,7 +104,7 @@ processConfigFile() {
          API_KEY=$(cat $(expandPath $(getConfigValue "${KEY}" "credentials")))
          GROUP=$(getConfigValue "${KEY}" "group")
          DEV_GROUP=$(getConfigValue "${KEY}" "developGroup")
-         updateGitlabRepos "${DIR}" "${BASE_URL}" "${API_KEY}" "${GROUP}" "${DEV_GROUP}"
+         updateGitLabRepos "${DIR}" "${BASE_URL}" "${API_KEY}" "${GROUP}" "${DEV_GROUP}"
       else
          echo "Unknown repo type '${TYPE}'"
          exit 1

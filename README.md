@@ -74,18 +74,18 @@ Config file notes:
         query, you may need to submit a pull request to update my script to work with that
         format, or accept a separate configuration attribute for the organization name or
         something.
-   * **Gitlab**:
-      * `baseURL`: The URL to the API for your Gitlab instance.
-      * `credentials`: The path to a file that contains your Gitlab API key (also known as
+   * **GitLab**:
+      * `baseURL`: The URL to the API for your GitLab instance.
+      * `credentials`: The path to a file that contains your GitLab API key (also known as
         "Personal Access Tokens"). The file should contain just the text of the key /
         personal access token (with a [trailing newline][newline], but not an empty final
         line).
       * `group`: The (numeric) ID of the group that contains the repos you want to clone.
         Will clone all the repos in that group.
       * `developGroup`: This is a bit special and has to do with the way I use one
-        instance of Gitlab that I work with. In this case we use `origin` to point to a
+        instance of GitLab that I work with. In this case we use `origin` to point to a
         canonical set of repos, but each of those repos also has a separate fork that
-        lives in a separate Gitlab group. Our feature branches are pushed to the fork so
+        lives in a separate GitLab group. Our feature branches are pushed to the fork so
         that we can rewrite history on them as much as we want, but then they're
         eventually merged into the long-lived (i.e. `master`) branch(es) that live on the
         true `origin`. That avoids our ticketing system getting associations to all the
