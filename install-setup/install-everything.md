@@ -207,7 +207,9 @@ user (someone who can not `sudo`), then you have two options:
      directory. To configure brew to always do this for all cask installs, do
      this:
 
+        ```
         echo 'export HOMEBREW_CASK_OPTS="--appdir=~/Applications"' >> ~/.bash_profile
+        ```
 
       * If you do add the `HOMEBREW_CASK_OPTS` to your Bash profile, you need
         to start a new terminal session to inherit those changes before
