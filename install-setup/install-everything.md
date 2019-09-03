@@ -223,6 +223,17 @@ user (someone who can not `sudo`), then you have two options:
            installation.
    * **Option 2:** Temporarily make your user an admin (so that your user can
      `sudo`), or run cask installations from a second user that can `sudo`.
+      * Note: when you make the user an admin, System Preferences will tell you that you
+	have to restart to make it go into effect. You actually don't. However, you will
+	need to later log out, log in as another user so that you can remove admin
+        privileges from your primary user.
+
+**At this time, I recommend option two if you have the ability to do it.** When I was
+using option one, most applications behaved okay, but I had a lot of problems with
+1Password and Google Chrome interactions. I suspect this was primarily on the part of
+1Password (I was / am on X Beta), but I couldn't put up with those issues and decided to
+install the apps where they expected to live - in the `/Applications` directory, which
+required using a user that could sudo.
 
 [1pwx]: https://twitter.com/jthomerson/status/1158830446437982208
 
