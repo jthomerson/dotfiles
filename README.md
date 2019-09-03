@@ -42,8 +42,8 @@ Here's an example of the format the config file needs to take:
       "type": "gitlab",
       "baseURL": "https://mycompany.com/gitlab/api/v4",
       "credentials": "~/.creds/gitlab",
-      "group": "150",
-      "developGroup": "23"
+      "group": "my-work-group",
+      "developGroup": "my-work-group-forks"
    },
    "github-personal": {
       "dir": "~/code/jthomerson",
@@ -80,8 +80,9 @@ Config file notes:
         "Personal Access Tokens"). The file should contain just the text of the key /
         personal access token (with a [trailing newline][newline], but not an empty final
         line).
-      * `group`: The (numeric) ID of the group that contains the repos you want to clone.
-        Will clone all the repos in that group.
+      * `group`: The ID (e.g. 123) or name (e.g. my-work-group) of the group
+        that contains the repos you want to clone.  Will clone all the repos in
+        that group.
       * `developGroup`: This is a bit special and has to do with the way I use one
         instance of GitLab that I work with. In this case we use `origin` to point to a
         canonical set of repos, but each of those repos also has a separate fork that
@@ -92,7 +93,7 @@ Config file notes:
         commits that we initially put into the feature branch before the code review; we
         only want our tickets referencing commits that land in the official branches that
         are hosted on the origin. Basically, if you want a separate origin, you can put
-        the (numeric) group ID of the group that has your fork, and the script will look
+        the group ID or name of the group that has your fork, and the script will look
         for another repo that shares the same name as the official origin repo within the
         "developGroup" group, and if it's found, it will add a `develop` origin for that
         repo in addition to the standard `origin` origin. Confused? Great; just leave this
