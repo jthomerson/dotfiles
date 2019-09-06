@@ -42,8 +42,15 @@ Here's an example of the format the config file needs to take:
       "type": "gitlab",
       "baseURL": "https://mycompany.com/gitlab/api/v4",
       "credentials": "~/.creds/gitlab",
-      "group": "my-work-group",
-      "developGroup": "my-work-group-forks"
+      "query": "groups/my-work-group/projects",
+      "developQuery": "groups/my-work-group-forks/projects"
+   },
+   "gitlab-personal": {
+      "dir": "~/code/gitlab-personal",
+      "type": "gitlab",
+      "baseURL": "https://mycompany.com/gitlab/api/v4",
+      "credentials": "~/.creds/gitlab",
+      "query": "users/jrthomer/projects"
    },
    "github-personal": {
       "dir": "~/code/jthomerson",
@@ -80,10 +87,11 @@ Config file notes:
         "Personal Access Tokens"). The file should contain just the text of the key /
         personal access token (with a [trailing newline][newline], but not an empty final
         line).
-      * `group`: The ID (e.g. 123) or name (e.g. my-work-group) of the group
-        that contains the repos you want to clone.  Will clone all the repos in
-        that group.
-      * `developGroup`: This is a bit special and has to do with the way I use one
+      * `query`: Similar to GitHub, this is a query that should return a list of projects.
+        The two examples I show above (`groups/{groupName}/projects` and
+        `/users/{username}/projects`) are likely all you'll need. Other things may work,
+        but have likely not been tested.
+      * `developQuery`: This is a bit special and has to do with the way I use one
         instance of GitLab that I work with. In this case we use `origin` to point to a
         canonical set of repos, but each of those repos also has a separate fork that
         lives in a separate GitLab group. Our feature branches are pushed to the fork so
@@ -93,11 +101,12 @@ Config file notes:
         commits that we initially put into the feature branch before the code review; we
         only want our tickets referencing commits that land in the official branches that
         are hosted on the origin. Basically, if you want a separate origin, you can put
-        the group ID or name of the group that has your fork, and the script will look
+        a query here that lists projects from the separate group, and the script will look
         for another repo that shares the same name as the official origin repo within the
-        "developGroup" group, and if it's found, it will add a `develop` origin for that
-        repo in addition to the standard `origin` origin. Confused? Great; just leave this
-        paramter blank and forget you read this paragraph.
+        project returned by the "developQuery" group, and if it's found, it will add a
+        `develop` origin for that repo in addition to the standard `origin` origin.
+        Confused? Great; just leave this paramter blank and forget you read this
+        paragraph.
 
 [jq]: https://stedolan.github.io/jq/
 [hub]: https://github.com/github/hub

@@ -51,13 +51,24 @@ updateGitLabRepos() {
    DIR="${1}"
    BASE_URL="${2}"
    API_KEY="${3}"
-   GROUP="${4}"
-   DEV_GROUP="${5}"
+   QUERY="${4}"
+   DEV_QUERY="${5}"
 
    mkdir -p "${DIR}"
    silentPushd "${DIR}"
 
-   LIST_URL="${BASE_URL}/groups/${GROUP}/projects?per_page=100"
+   if [[ "${QUERY}" =~ \? ]]; then
+      PAGINATION='&per_page=100'
+   else
+      PAGINATION='?per_page=100'
+   fi
+   if [[ "${DEV_QUERY}" =~ \? ]]; then
+      DEV_PAGINATION='&per_page=100'
+   else
+      DEV_PAGINATION='?per_page=100'
+   fi
+
+   LIST_URL="${BASE_URL}/${QUERY}${PAGINATION}"
    for PROJECT_ID in $(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${LIST_URL}" | jq -r '.[].id'); do
       PROJECT_FILE="/tmp/.gitlab-project-${PROJECT_ID}.json"
       curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${BASE_URL}/projects/${PROJECT_ID}" > "${PROJECT_FILE}"
@@ -68,19 +79,23 @@ updateGitLabRepos() {
          silentPushd "./${REPO_NAME}" && git fetch --all && silentPopd
       else
          echo "${REPO_NAME} does not exist - cloning"
-         FORK_LIST="${BASE_URL}/groups/${DEV_GROUP}?per_page=100"
-         FORK_ID=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${FORK_LIST}" | jq -r ".projects | map(select(.forked_from_project.id == ${PROJECT_ID}))[].id")
-         if [ "${FORK_ID}" == "" ]; then
-            echo "WARNING: No fork found!"
+         FORK_LIST="${BASE_URL}/${DEV_QUERY}${DEV_PAGINATION}"
+         if [ "${DEV_QUERY}" == "null" ]; then
             git clone "${CLONE_URL}"
          else
-            git clone "${CLONE_URL}"
-            FORK_URL=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${BASE_URL}/projects/${FORK_ID}" | jq -r '.ssh_url_to_repo')
-            if [ "${FORK_URL}" == "" ]; then
-               echo "URL for fork not found!"
-               exit 1
+            FORK_ID=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${FORK_LIST}" | jq -r ". | map(select(.forked_from_project.id == ${PROJECT_ID}))[].id")
+            if [ "${FORK_ID}" == "" ]; then
+               echo "WARNING: No fork found!"
+               git clone "${CLONE_URL}"
             else
-               silentPushd "./${REPO_NAME}" && git remote add develop "${FORK_URL}" && git fetch --all && silentPopd
+               git clone "${CLONE_URL}"
+               FORK_URL=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${BASE_URL}/projects/${FORK_ID}" | jq -r '.ssh_url_to_repo')
+               if [ "${FORK_URL}" == "" ]; then
+                  echo "URL for fork not found!"
+                  exit 1
+               else
+                  silentPushd "./${REPO_NAME}" && git remote add develop "${FORK_URL}" && git fetch --all && silentPopd
+               fi
             fi
          fi
       fi
@@ -102,9 +117,9 @@ processConfigFile() {
       elif [ "${TYPE}" == "gitlab" ]; then
          BASE_URL=$(getConfigValue "${KEY}" "baseURL")
          API_KEY=$(cat $(expandPath $(getConfigValue "${KEY}" "credentials")))
-         GROUP=$(getConfigValue "${KEY}" "group")
-         DEV_GROUP=$(getConfigValue "${KEY}" "developGroup")
-         updateGitLabRepos "${DIR}" "${BASE_URL}" "${API_KEY}" "${GROUP}" "${DEV_GROUP}"
+         QUERY=$(getConfigValue "${KEY}" "query")
+         DEV_QUERY=$(getConfigValue "${KEY}" "developQuery")
+         updateGitLabRepos "${DIR}" "${BASE_URL}" "${API_KEY}" "${QUERY}" "${DEV_QUERY}"
       else
          echo "Unknown repo type '${TYPE}'"
          exit 1
