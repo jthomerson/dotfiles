@@ -248,6 +248,7 @@ brew cask install visual-studio-code
 brew cask install docker
 brew cask install db-browser-for-sqlite
 brew cask install dropbox
+brew cask install balsamiq-mockups
 brew cask install remember-the-milk
 # If you have an older license for Keyboard Maestro, you'll have to install it
 # manually instead of this cask. See https://www.stairways.com/main/download
