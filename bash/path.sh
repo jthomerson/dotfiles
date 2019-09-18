@@ -58,7 +58,26 @@ export PATH="/usr/local/opt/python/libexec/bin:$PATH"
 # For compilers to find openssl you may need to set:
 #   export LDFLAGS="-L/usr/local/opt/openssl/lib"
 #   export CPPFLAGS="-I/usr/local/opt/openssl/include"
-export PATH="/usr/local/opt/openssl/bin:$PATH"
+# export PATH="/usr/local/opt/openssl/bin:$PATH"
+
+# From `brew install openssl@1.1`
+# A CA file has been bootstrapped using certificates from the system
+# keychain. To add additional certificates, place .pem files in
+#   /usr/local/etc/openssl@1.1/certs
+#
+# and run
+#   /usr/local/opt/openssl@1.1/bin/c_rehash
+#
+# openssl@1.1 is keg-only, which means it was not symlinked into /usr/local,
+# because openssl/libressl is provided by macOS so don't link an incompatible version.
+#
+# If you need to have openssl@1.1 first in your PATH run:
+#   echo 'export PATH="/usr/local/opt/openssl@1.1/bin:$PATH"' >> ~/.bash_profile
+#
+# For compilers to find openssl@1.1 you may need to set:
+#   export LDFLAGS="-L/usr/local/opt/openssl@1.1/lib"
+#   export CPPFLAGS="-I/usr/local/opt/openssl@1.1/include"
+export PATH="/usr/local/opt/openssl@1.1/bin:$PATH"
 
 
 # From `brew install readline` (or, because `readline` is dependency of `ffmpeg`)

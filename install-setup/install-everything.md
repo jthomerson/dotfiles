@@ -186,7 +186,7 @@ has been made to make those changes safe even if you don't install these tools.
 ```
 brew install coreutils
 brew install grep
-brew install openssl
+brew install openssl@1.1
 brew install python
 brew install ffmpeg
 ```
