@@ -3,6 +3,27 @@ showSiteCert() {
    openssl s_client -showcerts -servername "${SITE}" -connect "${SITE}":443 2>/dev/null </dev/null
 }
 
+showNextCertInFile() {
+   FILE="${1}"
+   sed -i '' -n '/-----BEGIN CERTIFICATE-----/,$p' "${FILE}"
+   openssl x509 -fingerprint -sha256 -noout -subject -in "${FILE}"
+   sed -i '' '1d' "${FILE}"
+   echo
+}
+
+showSiteCertChain() {
+   SITE="${1}"
+   FILE="/tmp/certs-${SITE}"
+
+   showSiteCert "${SITE}" > "${FILE}"
+
+   showNextCertInFile "${FILE}"
+
+   while [ $(grep -e '-----BEGIN CERTIFICATE-----' "${FILE}" | wc -l) -gt 0 ]; do
+      showNextCertInFile "${FILE}"
+   done
+}
+
 killScreenSaver() {
    SS_PROC_ID=$(ps ax | grep -i screensaver | grep -v grep | awk '{ print $1 }')
    echo "Killing process ${SS_PROC_ID}"
