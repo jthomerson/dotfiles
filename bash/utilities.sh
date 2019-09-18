@@ -6,7 +6,7 @@ showSiteCert() {
 showNextCertInFile() {
    FILE="${1}"
    sed -i '' -n '/-----BEGIN CERTIFICATE-----/,$p' "${FILE}"
-   openssl x509 -fingerprint -sha256 -noout -subject -in "${FILE}"
+   openssl x509 -noout -subject -pubkey -in "${FILE}"
    sed -i '' '1d' "${FILE}"
    echo
 }
