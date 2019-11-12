@@ -464,6 +464,13 @@ Note that this installs the latest version of Java. Presumably you can use the
 compatibility flags to determine which version you're targeting (rather than installing
 additional older versions).
 
+## Other Casks You May Need for Work
+
+```
+brew cask install skype-for-business
+```
+
+
 ## Mac App Store Apps
 
 I also install these, which I've purchased on the App Store:
