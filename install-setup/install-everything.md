@@ -476,3 +476,4 @@ brew cask install skype-for-business
 I also install these, which I've purchased on the App Store:
 
    * [Pixelmator](https://apps.apple.com/us/app/pixelmator/id407963104?mt=12)
+   * [Microsoft OneNote](https://apps.apple.com/us/app/microsoft-onenote/id784801555?mt=12) (free)
