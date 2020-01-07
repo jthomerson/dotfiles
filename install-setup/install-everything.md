@@ -158,6 +158,7 @@ Install some miscellaneous tools that you might like:
 
 ```
 brew install \
+   parallel \
    wget \
    awscli \
    telnet \
