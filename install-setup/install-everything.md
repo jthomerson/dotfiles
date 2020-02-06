@@ -471,6 +471,11 @@ additional older versions).
 brew cask install skype-for-business
 ```
 
+### Install Audacity
+
+Install Audacity by following the instructions on their [Mac download
+page](https://www.audacityteam.org/download/mac/).
+
 
 ## Mac App Store Apps
 
