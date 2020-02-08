@@ -13,6 +13,11 @@ source "${SCRIPT_DIR}/path.sh"
 # cd into a directory by name
 shopt -s autocd
 
+# shortcuts for jumping "up"
+alias 4up="cd ../../../.."
+alias 3up="cd ../../.."
+alias 2up="cd ../.."
+
 # Aliases to configure default options
 alias tree='tree -A'
 alias grep="grep --color=auto"
