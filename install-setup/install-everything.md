@@ -174,6 +174,7 @@ brew install \
    tmux \
    thrift \
    youtube-dl \
+   asciinema \
    remind101/formulae/assume-role \
    reattach-to-user-namespace
 ```
