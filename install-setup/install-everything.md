@@ -175,6 +175,7 @@ brew install \
    thrift \
    youtube-dl \
    asciinema \
+   graphviz \
    reattach-to-user-namespace
 ```
 
