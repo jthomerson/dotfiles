@@ -175,7 +175,6 @@ brew install \
    thrift \
    youtube-dl \
    asciinema \
-   remind101/formulae/assume-role \
    reattach-to-user-namespace
 ```
 
@@ -269,6 +268,8 @@ brew tap homebrew/cask-versions && brew cask install 1password-beta
 
 ```
 pip install yq
+pip install awsume
+pip install awsume-console-plugin
 ```
 
 ### Upgrade Vim and configure it
