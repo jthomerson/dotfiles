@@ -262,6 +262,7 @@ brew cask install sketchup
 brew cask install google-cloud-sdk
 brew cask install mactex
 brew cask install vlc
+brew cask install graphiql
 brew tap homebrew/cask-versions && brew cask install 1password-beta
 ```
 
