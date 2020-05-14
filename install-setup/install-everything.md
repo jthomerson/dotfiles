@@ -468,6 +468,16 @@ Note that this installs the latest version of Java. Presumably you can use the
 compatibility flags to determine which version you're targeting (rather than installing
 additional older versions).
 
+#### Alternative Java Installation
+
+I need to figure out which of these two methods (above or this one) is better, but for now
+I'm just documenting both.
+
+```
+brew install openjdk
+```
+
+
 ## Other Casks You May Need for Work
 
 ```

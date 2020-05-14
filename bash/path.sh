@@ -134,3 +134,22 @@ export PATH="/usr/local/opt/ruby/bin:$PATH"
 if [ -d /Library/TeX/texbin ]; then
    export PATH="/Library/TeX/texbin:$PATH"
 fi
+
+# From `brew install openjdk`
+# ==> Pouring openjdk-13.0.2+8_2.mojave.bottle.tar.gz
+# ==> Caveats
+# For the system Java wrappers to find this JDK, symlink it with
+#   sudo ln -sfn /usr/local/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
+#
+# openjdk is keg-only, which means it was not symlinked into /usr/local,
+# because it shadows the macOS `java` wrapper.
+#
+# If you need to have openjdk first in your PATH run:
+#   echo 'export PATH="/usr/local/opt/openjdk/bin:$PATH"' >> ~/.bash_profile
+#
+# For compilers to find openjdk you may need to set:
+#   export CPPFLAGS="-I/usr/local/opt/openjdk/include"
+#
+# ==> Summary
+# 🍺  /usr/local/Cellar/openjdk/13.0.2+8_2: 631 files, 314.6MB
+export PATH="/usr/local/opt/openjdk/bin:$PATH"
