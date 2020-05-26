@@ -29,8 +29,25 @@ alias popall='cd "$(dirs -l -0)" && dirs -c && cd'
 
 alias uuidcb="uuidgen | tr 'A-Z' 'a-z' | tr -d '\n' | pbcopy"
 alias md5cb="dd if=/dev/random bs=2048 count=1 2>/dev/null | md5sum | sed 's| .*||' | tr -d '\n' | pbcopy"
-alias weather='curl wttr.in/10987'
-alias weatherv2='curl v2.wttr.in/10987'
+
+weather() {
+   DOMAIN="wttr.in"
+   WHERE="10987"
+
+   if [ "$1" == "v2" ] || [ "$2" == "v2" ]; then
+      DOMAIN="v2.wttr.in"
+      if [ "$1" == "v2" ]; then
+         shift;
+      fi
+   fi
+
+   if [ "$1" != "" ]; then
+      WHERE="$1"
+      shift
+   fi
+
+   curl "${DOMAIN}/${WHERE}"
+}
 
 # Node aliases
 alias rmNodeModules='find . -name node_modules \! -path '"'"'*/node_modules/*'"'"' | xargs rm -rf'
