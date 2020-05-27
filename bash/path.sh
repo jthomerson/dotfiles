@@ -153,3 +153,13 @@ fi
 # ==> Summary
 # 🍺  /usr/local/Cellar/openjdk/13.0.2+8_2: 631 files, 314.6MB
 export PATH="/usr/local/opt/openjdk/bin:$PATH"
+
+# From `brew install gnu-sed`
+# ==> Pouring gnu-sed-4.8.mojave.bottle.tar.gz
+# ==> Caveats
+# GNU "sed" has been installed as "gsed".
+# If you need to use it as "sed", you can add a "gnubin" directory
+# to your PATH from your bashrc like:
+#
+#     PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
+PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
