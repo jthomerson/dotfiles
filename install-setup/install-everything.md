@@ -236,7 +236,8 @@ using option one, most applications behaved okay, but I had a lot of problems wi
 1Password and Google Chrome interactions. I suspect this was primarily on the part of
 1Password (I was / am on X Beta), but I couldn't put up with those issues and decided to
 install the apps where they expected to live - in the `/Applications` directory, which
-required using a user that could sudo.
+required using a user that could sudo. (Note that I later switched to installing 1Password
+from the website download.)
 
 [1pwx]: https://twitter.com/jthomerson/status/1158830446437982208
 
@@ -252,19 +253,16 @@ brew cask install docker
 brew cask install db-browser-for-sqlite
 brew cask install dropbox
 brew cask install balsamiq-wireframes
-brew cask install remember-the-milk
 # If you have an older license for Keyboard Maestro, you'll have to install it
 # manually instead of this cask. See https://www.stairways.com/main/download
 brew cask install keyboard-maestro
 brew cask install skitch
 brew cask install slack
-brew cask install 1password-cli
 brew cask install sketchup
 brew cask install google-cloud-sdk
 brew cask install mactex
 brew cask install vlc
 brew cask install graphiql
-brew tap homebrew/cask-versions && brew cask install 1password-beta
 ```
 
 #### Python-Based (Non-Brew) Tools:
@@ -490,6 +488,21 @@ brew cask install skype-for-business
 
 Install Audacity by following the instructions on their [Mac download
 page](https://www.audacityteam.org/download/mac/).
+
+
+## Manual Installs
+
+These apps you will want to download and install from their websites. I've previously
+tried using the casks for some of these, but at some point had problems with them and
+decided it was better to just use the official installers.
+
+   * [Remember the Milk](https://www.rememberthemilk.com/services/)
+   * [1Password X](https://1password.com/downloads/mac/)
+      * And the [Chrome plugin][1pass-chrome]
+      * And the [Firefox plugin][1pass-firefox]
+
+[1pass-chrome]: https://chrome.google.com/webstore/detail/1password-%E2%80%93-password-mana/aeblfdkhhhdcdjpifhhbdiojplfjncoa
+[1pass-firefox]: https://addons.mozilla.org/en-US/firefox/addon/1password-x-password-manager/?src=search
 
 
 ## Mac App Store Apps
