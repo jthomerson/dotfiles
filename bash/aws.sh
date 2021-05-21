@@ -9,7 +9,6 @@ alias AWSUnset='unset $(env | grep AWS | grep -v AWS_REGION | grep -v AWS_DEFAUL
 
 # For awsume (https://awsu.me)
 alias awsume=". awsume"
-alias AWS=". awsume"
 
 _awsume() {
     local cur prev opts
