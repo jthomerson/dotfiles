@@ -1,4 +1,10 @@
 # Taken from: https://gist.github.com/jvenator/9672772a631c117da151
+
+if [ "${HOMEBREW_PREFIX}" != "/usr/local" ]; then
+   echo "ERROR: This script is not set up for M1 yet"
+   exit 1
+fi
+
 curl -o ~/Downloads/pdftk_download.pkg https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/pdftk_server-2.02-mac_osx-10.11-setup.pkg && \
 pkgutil --expand ~/Downloads/pdftk_download.pkg ~/Downloads/pdftk_package && \
 cd ~ && \

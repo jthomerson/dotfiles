@@ -6,18 +6,16 @@ https://dev.to/therealdanvega/new-macbook-setup-for-developers-2nma
 
 ## Prepare for Installations
 
-### Get Critical Files From Another Machine
+### Change Your Shell to Bash
 
-If you already have another Mac set up somewhere and you have critical secure
-files (e.g. `~/.ssh` with your keys, or `~/.aws` with credentials and/or role
-configurations), you should probably rsync them from that machine to this one.
-
-For example:
+Starting with Catalina, macOS switched to using `zsh` as the default shell.
+Since I prefer `bash`, I switch it back before progressing.
 
 ```
-rsync -a --progress OTHER_MACHINE:~/.ssh ~/
-rsync -a --progress OTHER_MACHINE:~/.aws ~/
+chsh -s /bin/bash
 ```
+
+**Now restart Terminal**
 
 
 ### Set up Xcode Command Line Tools Package
@@ -39,6 +37,8 @@ Note that this script must be run with a user that can `sudo`.
 /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
 
+#### Alternate Installation as Non-Admin
+
 If the user you ran the previous command as is not your primary user (i.e. it
 was a user who could `sudo`, but your day-to-day primary user can not `sudo`),
 but you want your primary user to be able to install packages with Homebrew,
@@ -56,7 +56,7 @@ At this point you should be set up and able to install packages using Homebrew
 as your primary user.
 
 
-## Install Essentials
+## Configure Bash
 
 ### Upgrade bash
 
@@ -74,7 +74,7 @@ Now make it available as a shell:
 
 ```
 # Note that you need to run this as a user who can sudo
-sudo bash -c 'echo /usr/local/bin/bash >> /etc/shells'
+sudo bash -c 'echo /opt/homebrew/bin/bash >> /etc/shells'
 ```
 
 And then make it your shell. You should run this as your primary user, as well as any
@@ -82,12 +82,72 @@ other user that you want to use this updated version of bash as their shell (for
 if you have a second user that can sudo, you may want to run it as that user as well).
 
 ```
-chsh -s /usr/local/bin/bash
+chsh -s /opt/homebrew/bin/bash
 ```
 
 If your user account does not have `sudo` permissions, you can also `Cmd+,` in
 Terminal and change the setting from "Shells open with: Default login shell" to
-"Command" and enter `/usr/local/bin/bash`.
+"Command" and enter `/opt/homebrew/bin/bash`.
+
+
+### Start Your Bash Profile
+
+Let's get your Bash profile started. First, pick a "friendly name" for this
+machine. This will appear in the terminal where your hostname would normally
+appear. We will put the friendly name as the first name of your bash profile.
+We'll also make a backup of any existing bash profile in case you have one.
+
+```
+cat ~/.bash_profile > ~/.bash_profile.$(date +%s).bak
+echo 'FRIENDLYHOSTNAME="mym1"' > ~/.bash_profile
+```
+
+Now we want to reset the PATH variable each time your profile is reset. We do
+this so that you start from a clean slate instead of just appending (or
+prepending) new paths to your already-modified PATH variable. This line will
+reset it to the Mac default before proceeding.
+
+```
+echo 'export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"' >> ~/.bash_profile
+```
+
+Now we want to allow Homebrew to add its variables to the profile each time our
+profile is reset. This is especially needed because on ARM (M1) machines,
+Homebrew installs to `/opt/homebrew` whereas on x86 installs to `/usr/local`. In
+order to make our dotfiles work with both installations, we need the
+`HOMEBREW_PREFIX` environment variable, which this script will configure.
+
+```
+eval "$(/opt/homebrew/bin/brew shellenv)"
+```
+
+Finally, we want to use the profile from our dotfiles to configure our
+environment, so we add this line to our local profile.
+
+```
+echo 'source ~/code/jthomerson/dotfiles/bash/profile.sh' >> ~/.bash_profile
+```
+
+**Now start a new terminal session to inherit those changes.**
+
+
+## Get Critical Files From Another Machine
+
+If you already have another Mac set up somewhere and you have critical secure
+files (e.g. `~/.ssh` with your keys, or `~/.aws` with credentials and/or role
+configurations), you should probably rsync them from that machine to this one.
+
+For example:
+
+```
+rsync -a --progress OTHER_MACHINE:~/.ssh ~/
+rsync -a --progress OTHER_MACHINE:~/.creds ~/
+rsync -a --progress OTHER_MACHINE:~/.aws ~/
+rsync -a --progress OTHER_MACHINE:~/.awsume ~/
+```
+
+
+## Install Essentials
 
 
 ### Install git
@@ -117,7 +177,7 @@ brew install bash-completion
 ```
 
 
-### Install this repo
+### Install This Repo
 
 This repo has all the necessary dotfiles in it.
 
@@ -128,31 +188,45 @@ git clone git@github.com:jthomerson/dotfiles.git
 ```
 
 
-### Configure bash profile
-
-Set up the bash profile.
-
-If one does not exist yet, you may want to do this. This will reset the `PATH` variable to
-its default so that each time you reset your shell, you don't end up appending your old
-PATH to your new one. Of course, if your bash profile already has other things in it, you
-may not want to do this, or you may want to put this at the very top of the file.
-
-```
-echo 'export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"' >> ~/.bash_profile
-```
-
-Then we want to definitely set up the profile to source this script:
-
-```
-echo 'source ~/code/jthomerson/dotfiles/bash/profile.sh' >> ~/.bash_profile
-```
-
-**Now start a new terminal session to inherit those changes.**
-
-
 ## Install Other Apps and Tools
 
-### Install miscellaneous tools
+### Install and Configure iTerm2
+
+First, install [iTerm2](https://www.iterm2.com/).
+
+```
+brew install iterm2
+```
+
+Once you install [iTerm2](https://www.iterm2.com/), you will probably want to configure it
+to allow for jumping / deleting back a word (`Opt+Arrows`, `Opt+Delete`), or a line
+(`Cmd+Arrows`, `Cmd+Delete`). There's a great [Stack Overflow
+answer](https://stackoverflow.com/a/22312856) on how to do this. But, since I've already
+done that and saved my iTerm configuration into this repo, here's the steps to use the
+committed config:
+
+   * Open iTerm settings
+   * Check the "Load preferences from a custom folder or URL" option (under "General > Preferences")
+   * Browse to / enter the path (e.g. "~/code/jthomerson/dotfiles/app-settings/iterm2")
+
+**Now kill Terminal and from here on out, use iTerm2.**
+
+
+### Install Rectangle
+
+[Rectangle app](https://github.com/rxhanson/Rectangle) is the replacement for
+[Spectacle](https://www.spectacleapp.com/). It allows you to easily move windows
+around with keyboard shortcuts.
+
+```
+brew install rectangle
+```
+
+Then open the app and configure your settings. I use Spectacle defaults because
+I used Spectacle for so long that I have muscle memory with those settings.
+
+
+### Install Miscellaneous Tools
 
 Install some miscellaneous tools that you might like:
 
@@ -176,7 +250,8 @@ brew install \
    youtube-dl \
    asciinema \
    graphviz \
-   reattach-to-user-namespace
+   reattach-to-user-namespace \
+   pandoc
 ```
 
 Some tools require modifications to your `PATH` environment variable. Each of the tools I
@@ -194,7 +269,7 @@ brew install python
 brew install ffmpeg
 ```
 
-### Install cask-based (many GUI) tools
+### Install GUI (Previously Cask) Tools
 
 Many GUI apps (i.e. Google Chrome, Firefox, Sublime, etc) can be installed by
 `brew` from _casks_. According to [brew](https://brew.sh), a cask is for:
@@ -202,7 +277,12 @@ Many GUI apps (i.e. Google Chrome, Firefox, Sublime, etc) can be installed by
 > "To install, drag this icon..." no more. `brew cask` installs macOS apps,
 > fonts and plugins and other non-open source software.
 
-Note, though, that many casks install into your `/Applications` directory. That
+Note: In older versions of Brew, you used `brew cask install {cask}`, but in
+[v2.6.0](https://brew.sh/2020/12/01/homebrew-2.6.0/) this changed and you use
+standard `brew install` commands (although supposedly some require the
+`--cask` flag from time to time).
+
+Note, also, that many casks install into your `/Applications` directory. That
 will require administrator access. So, if you are running brew as a *non-admin*
 user (someone who can not `sudo`), then you have two options:
 
@@ -243,29 +323,23 @@ from the website download.)
 
 
 ```
-brew cask install iterm2
-brew cask install spectacle
-brew cask install sublime-text
-brew cask install google-chrome
-brew cask install firefox
-brew cask install visual-studio-code
-brew cask install docker
-brew cask install db-browser-for-sqlite
-brew cask install dropbox
-brew cask install balsamiq-wireframes
-# If you have an older license for Keyboard Maestro, you'll have to install it
-# manually instead of this cask. See https://www.stairways.com/main/download
-brew cask install keyboard-maestro
-brew cask install skitch
-brew cask install slack
-brew cask install sketchup
-brew cask install google-cloud-sdk
-brew cask install mactex
-brew cask install vlc
-brew cask install graphiql
+brew install sublime-text &&
+brew install google-chrome &&
+brew install firefox &&
+brew install visual-studio-code &&
+brew install homebrew/cask/docker &&
+brew install db-browser-for-sqlite &&
+brew install dropbox &&
+brew install balsamiq-wireframes &&
+brew install skitch &&
+brew install slack &&
+brew install mactex &&
+brew install vlc &&
+brew install graphiql &&
+brew install google-backup-and-sync
 ```
 
-#### Python-Based (Non-Brew) Tools:
+### Install Python-Based (Non-Brew) Tools:
 
 ```
 pip install yq
@@ -273,7 +347,7 @@ pip install awsume
 pip install awsume-console-plugin
 ```
 
-### Upgrade Vim and configure it
+### Upgrade and Configure Vim
 
 Vim installs Ruby, which requires additional entries in your profile to update
 your `PATH` environment if you want to use the Homebrew-installed Ruby (see
@@ -365,15 +439,39 @@ Note: you should check what the latest version is by visiting
 https://github.com/nvm-sh/nvm#installation-and-update
 
 ```
+# If you are running this on an M1 Mac and you need to use versions of Node prior to 15.3
+# (which is the first version that supported the arm64 architecture), you will need to
+# first start a terminal session using the `arch` tool to run the terminal in i386. Do
+# that by following this step first:
+arch -x86_64 zsh
+
+# That will start a zsh shell in i386 (bash isn't universal, so can't be started the same
+# way). Then when you run the normal installation (next command), everything will run
+# fine.
+
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
 ```
 
 Then you'll want to at least set up your default node and NPM versions, e.g.:
 
 ```
-nvm install 8.10
-npm install --global npm@6.4.1
+nvm install 12
 ```
+
+Installing a version of Node that did not support ARM will result in a long installation
+process, as NVM will need to compile Node.
+
+When that's done, if you want to confirm that your older version of Node is running as an
+Intel architecture (using Rosetta, which it will need to do), you can run this command:
+
+```
+nvm use 12
+node -p process.arch
+```
+
+If it prints `arm64`, then Node is running on the ARM architecture, which it doesn't
+support. See the [NVM homepage](https://github.com/nvm-sh/nvm#macos-troubleshooting)
+troubleshooting section for more information.
 
 
 ### Install Global NPM Modules
@@ -381,7 +479,10 @@ npm install --global npm@6.4.1
 ```
 npm install --global grunt-cli \
    serverless \
-   jwt-cli
+   jwt-cli \
+   @vue/cli \
+   http-server \
+   yo
 ```
 
 
@@ -390,7 +491,9 @@ npm install --global grunt-cli \
 Run `./install-pdftk.sh`
 
 
+
 ### Install Antivirus
+
 
 If you have a need (e.g. corporate policy for your work VPN, etc) to install an
 antivirus software, you can use [Avira for
@@ -398,7 +501,7 @@ free](https://www.avira.com/en/free-antivirus-mac). If, like me, you want to
 install everything possible via CLI, just do this:
 
 ```
-brew cask install avira-antivirus
+brew install avira-antivirus
 ```
 
 Then follow the on-screen instructions.
@@ -412,6 +515,11 @@ uses. You'll need to download that from your company and manually install it.
 The [GitHub CLI tool](https://hub.github.com/) is handy to automate some tasks, and
 especially for calling the GitHub APIs from the CLI.
 
+Before logging in, you'll need to create a [personal access token][hub-pat]. Give it
+repo and workflow access. When prompted for your password, enter the token instead.
+
+[hub-pat]: https://github.com/settings/tokens
+
 ```
 brew install hub
 hub api
@@ -423,6 +531,13 @@ Now you can do things like:
 ```
 hub api --paginate 'user/repos?affiliation=owner'
 ```
+
+**NOTE:** This is the **old** `hub` tool. The newer tool is `gh`. See:
+
+   * New: https://cli.github.com/
+   * Old: https://github.com/github/hub
+   * Comparison: https://github.com/cli/cli#comparison-with-hub
+   * More detailed why: https://github.com/cli/cli/blob/trunk/docs/gh-vs-hub.md
 
 
 ### Configure iMessage
@@ -439,19 +554,6 @@ hub api --paginate 'user/repos?affiliation=owner'
    * Select Contacts > Add Account from the menu
    * Click the Google option, and follow the prompts to connect
 
-
-### Configure iTerm2
-
-Once you install [iTerm2](https://www.iterm2.com/), you will probably want to configure it
-to allow for jumping / deleting back a word (`Opt+Arrows`, `Opt+Delete`), or a line
-(`Cmd+Arrows`, `Cmd+Delete`). There's a great [Stack Overflow
-answer](https://stackoverflow.com/a/22312856) on how to do this. But, since I've already
-done that and saved my iTerm configuration into this repo, here's the steps to use the
-committed config:
-
-   * Open iTerm settings
-   * Check the "Load preferences from a custom folder or URL" option (under "General > Preferences")
-   * Browse to / enter the path (e.g. "~/code/jthomerson/dotfiles/app-settings/iterm2")
 
 
 ### Install JDK Version and Eclipse
@@ -478,18 +580,6 @@ brew install openjdk
 ```
 
 
-## Other Casks You May Need for Work
-
-```
-brew cask install skype-for-business
-```
-
-### Install Audacity
-
-Install Audacity by following the instructions on their [Mac download
-page](https://www.audacityteam.org/download/mac/).
-
-
 ## Manual Installs
 
 These apps you will want to download and install from their websites. I've previously
@@ -500,14 +590,18 @@ decided it was better to just use the official installers.
    * [1Password X](https://1password.com/downloads/mac/)
       * And the [Chrome plugin][1pass-chrome]
       * And the [Firefox plugin][1pass-firefox]
+   * [Audacity](https://www.audacityteam.org/download/mac/)
 
 [1pass-chrome]: https://chrome.google.com/webstore/detail/1password-%E2%80%93-password-mana/aeblfdkhhhdcdjpifhhbdiojplfjncoa
 [1pass-firefox]: https://addons.mozilla.org/en-US/firefox/addon/1password-x-password-manager/?src=search
+
 
 
 ## Mac App Store Apps
 
 I also install these, which I've purchased on the App Store:
 
-   * [Pixelmator](https://apps.apple.com/us/app/pixelmator/id407963104?mt=12)
+   * [Pixelmator Pro](https://apps.apple.com/us/app/pixelmator-pro/id1289583905?mt=12)
    * [Microsoft OneNote](https://apps.apple.com/us/app/microsoft-onenote/id784801555?mt=12) (free)
+   * Final Cut Pro, et al
+   * Microsoft Office apps

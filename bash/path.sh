@@ -4,7 +4,7 @@
 # Commands also provided by macOS have been installed with the prefix "g".
 # If you need to use these commands with their normal names, you
 # can add a "gnubin" directory to your PATH from your bashrc like:
-export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/opt/coreutils/libexec/gnubin:$PATH"
 
 
 # From `brew install grep`:
@@ -13,7 +13,7 @@ export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 # All commands have been installed with the prefix "g".
 # If you need to use these commands with their normal names, you
 # can add a "gnubin" directory to your PATH from your bashrc like:
-export PATH="/usr/local/opt/grep/libexec/gnubin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/opt/grep/libexec/gnubin:$PATH"
 
 
 # From `brew install python` (or, because `python` is dependency of `ffmpeg`)
@@ -35,7 +35,7 @@ export PATH="/usr/local/opt/grep/libexec/gnubin:$PATH"
 #   /usr/local/lib/python3.7/site-packages
 #
 # See: https://docs.brew.sh/Homebrew-and-Python
-export PATH="/usr/local/opt/python/libexec/bin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/opt/python/libexec/bin:$PATH"
 
 
 
@@ -77,7 +77,7 @@ export PATH="/usr/local/opt/python/libexec/bin:$PATH"
 # For compilers to find openssl@1.1 you may need to set:
 #   export LDFLAGS="-L/usr/local/opt/openssl@1.1/lib"
 #   export CPPFLAGS="-I/usr/local/opt/openssl@1.1/include"
-export PATH="/usr/local/opt/openssl@1.1/bin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/opt/openssl@1.1/bin:$PATH"
 
 
 # From `brew install readline` (or, because `readline` is dependency of `ffmpeg`)
@@ -105,7 +105,7 @@ export PATH="/usr/local/opt/openssl@1.1/bin:$PATH"
 # For compilers to find sqlite you may need to set:
 #   export LDFLAGS="-L/usr/local/opt/sqlite/lib"
 #   export CPPFLAGS="-I/usr/local/opt/sqlite/include"
-export PATH="/usr/local/opt/sqlite/bin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/opt/sqlite/bin:$PATH"
 
 
 # From `brew install ruby` (or, because `ruby` is a dependency of `vim`)
@@ -125,7 +125,7 @@ export PATH="/usr/local/opt/sqlite/bin:$PATH"
 # For compilers to find ruby you may need to set:
 #   export LDFLAGS="-L/usr/local/opt/ruby/lib"
 #   export CPPFLAGS="-I/usr/local/opt/ruby/include"
-export PATH="/usr/local/opt/ruby/bin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/opt/ruby/bin:$PATH"
 
 
 # From `brew cask install mactex`
@@ -152,7 +152,7 @@ fi
 #
 # ==> Summary
 # 🍺  /usr/local/Cellar/openjdk/13.0.2+8_2: 631 files, 314.6MB
-export PATH="/usr/local/opt/openjdk/bin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/opt/openjdk/bin:$PATH"
 
 # From `brew install gnu-sed`
 # ==> Pouring gnu-sed-4.8.mojave.bottle.tar.gz
@@ -162,4 +162,4 @@ export PATH="/usr/local/opt/openjdk/bin:$PATH"
 # to your PATH from your bashrc like:
 #
 #     PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
-PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
+PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
