@@ -31,6 +31,45 @@ valid name on the cert. Of course, as with any cert warnings, you should do your
 diligence and make sure the cert you're (hopefully not blindly) accepting is legitimate.
 
 
+### Newer Outlook Setup (if above fails)
+
+When I set up my M1 in 2021, the procedure above wouldn't work. Unfortunately, I didn't
+document the entire process at the time, so I don't remember all the exact details. Here's
+what I remember:
+
+IIRC, there were two main problems:
+
+   1. I could not get to the "advanced configuration" screen in the newer version of
+      Outlook, because that screen was only accessible after you've setup the account
+      using auto-discovery. Since auto-discovery doesn't work in this port-forwarding
+      configuration, you couldn't ever tell it to use localhost.
+   2. It kept silently failing, even after I used the script below to setup the account.
+      This problem was caused by the certificate not being trusted since the domain on the
+      cert does not include "localhost". This part I struggled with for a couple days
+      until I finally figured out how to get around it. In older versions of Outlook,
+      you'd get a popup that told you there was a cert error (the cert isn't signed for
+      "localhost" domain), and then you could jsust accept the error and move on. But the
+      newer version of Outlook doesn't seem to show that error, so you don't really know
+      what's failing. I figured out it was the cert, even though the error wasn't
+      appearing.
+
+The solutions to those problems were:
+
+   1. **Account setup when auto-discovery fails:** Use the AppleScript in
+      `../scripts/setup-outlook.scpt` to setup the account, bypassing the whole
+      auto-discovery thing. Open the script (which will open in the native Script Editor
+      app), update the variables at the top of the script, and then run the script from
+      the script editor. Then re-open Outlook and your account should appear there.
+   2. **Cert error:** Unfortunately, I can't remember the exact solution to this problem.
+      I floundered around with various trials until I finally got it to work. I believe
+      this is what I did:
+      1. Download the certificate from your company
+      2. Install the certificate in Keychain Access
+      3. Update the trust settings for the certificate to what's shown here:
+
+![](exchange-via-port-forwarding-3.png)
+
+
 ## Avoiding Auto Reconfiguration
 
 Sometimes your Exchange server will automatically tell your Outlook to update its server
