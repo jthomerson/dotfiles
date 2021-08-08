@@ -60,12 +60,9 @@ The solutions to those problems were:
       auto-discovery thing. Open the script (which will open in the native Script Editor
       app), update the variables at the top of the script, and then run the script from
       the script editor. Then re-open Outlook and your account should appear there.
-   2. **Cert error:** Unfortunately, I can't remember the exact solution to this problem.
-      I floundered around with various trials until I finally got it to work. I believe
-      this is what I did:
-      1. Download the certificate from your company
-      2. Install the certificate in Keychain Access
-      3. Update the trust settings for the certificate to what's shown here:
+   2. **Cert error:** Visit <https://localhost:4433/EWS/Exchange.asmx> in Safari (must be
+      Safari), accept the certificate warning, and then go to the Keychain app and change
+      the security settings to what's shown below.
 
 ![](exchange-via-port-forwarding-3.png)
 
