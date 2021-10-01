@@ -587,6 +587,9 @@ tried using the casks for some of these, but at some point had problems with the
 decided it was better to just use the official installers.
 
    * [Remember the Milk](https://www.rememberthemilk.com/services/)
+      * On computers with restrictive IT policies, it may be best to install this in
+        `~/Applications` so that it has permissions to update itself. Otherwise, I was
+        constantly nagged with permissions prompts to install updates.
    * [1Password X](https://1password.com/downloads/mac/)
       * And the [Chrome plugin][1pass-chrome]
       * And the [Firefox plugin][1pass-firefox]
