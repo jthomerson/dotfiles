@@ -34,6 +34,7 @@ updateGitHubRepos() {
 updateGitHubRepo() {
    REPO_NAME="${1}"
    ORG_NAME="${2}"
+   echo "------ update GitHub: ${ORG_NAME}/${REPO_NAME} ------"
    if [ -d "./${REPO_NAME}" ]; then
       echo "${REPO_NAME} exists - fetching"
       silentPushd "./${REPO_NAME}" && git fetch --all && silentPopd
@@ -52,7 +53,7 @@ updateGitLabRepos() {
    BASE_URL="${2}"
    API_KEY="${3}"
    QUERY="${4}"
-   DEV_QUERY="${5}"
+   FORK_QUERY="${5}"
 
    mkdir -p "${DIR}"
    silentPushd "${DIR}"
@@ -62,10 +63,10 @@ updateGitLabRepos() {
    else
       PAGINATION='?per_page=100'
    fi
-   if [[ "${DEV_QUERY}" =~ \? ]]; then
-      DEV_PAGINATION='&per_page=100'
+   if [[ "${FORK_QUERY}" =~ \? ]]; then
+      FORK_PAGINATION='&per_page=100'
    else
-      DEV_PAGINATION='?per_page=100'
+      FORK_PAGINATION='?per_page=100'
    fi
 
    LIST_URL="${BASE_URL}/${QUERY}${PAGINATION}"
@@ -73,30 +74,30 @@ updateGitLabRepos() {
       PROJECT_FILE="/tmp/.gitlab-project-${PROJECT_ID}.json"
       curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${BASE_URL}/projects/${PROJECT_ID}" > "${PROJECT_FILE}"
       REPO_NAME=$(cat "${PROJECT_FILE}" | jq -r '.name')
-      CLONE_URL=$(cat "${PROJECT_FILE}" | jq -r '.ssh_url_to_repo')
+      echo "------ update GitLab: ${REPO_NAME} (${QUERY}) ------"
+      CANONICAL_CLONE_URL=$(cat "${PROJECT_FILE}" | jq -r '.ssh_url_to_repo')
       if [ -d "./${REPO_NAME}" ]; then
          echo "${REPO_NAME} exists - fetching"
          silentPushd "./${REPO_NAME}" && git fetch --all && silentPopd
       else
          echo "${REPO_NAME} does not exist - cloning"
-         FORK_LIST="${BASE_URL}/${DEV_QUERY}${DEV_PAGINATION}"
-         if [ "${DEV_QUERY}" == "null" ]; then
-            git clone "${CLONE_URL}"
-         else
-            FORK_ID=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${FORK_LIST}" | jq -r ". | map(select(.forked_from_project.id == ${PROJECT_ID}))[].id")
+         FORK_LIST_URK="${BASE_URL}/${FORK_QUERY}${FORK_PAGINATION}"
+         if [ "${FORK_QUERY}" == "null" ]; then
+            FORK_ID=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${FORK_LIST_URK}" | jq -r ". | map(select(.forked_from_project.id == ${PROJECT_ID}))[].id")
             if [ "${FORK_ID}" == "" ]; then
                echo "WARNING: No fork found!"
-               git clone "${CLONE_URL}"
+               git clone "${CANONICAL_CLONE_URL}"
             else
-               git clone "${CLONE_URL}"
                FORK_URL=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${BASE_URL}/projects/${FORK_ID}" | jq -r '.ssh_url_to_repo')
                if [ "${FORK_URL}" == "" ]; then
-                  echo "URL for fork not found!"
+                  echo "Found a fork, but URL for fork not found!"
                   exit 1
-               else
-                  silentPushd "./${REPO_NAME}" && git remote add develop "${FORK_URL}" && git fetch --all && silentPopd
                fi
+               git clone "${FORK_URL}"
+               silentPushd "./${REPO_NAME}" && git remote add canonical "${CANONICAL_CLONE_URL}" && git fetch --all && silentPopd
             fi
+         else
+            git clone "${CANONICAL_CLONE_URL}"
          fi
       fi
       rm "${PROJECT_FILE}"
@@ -118,8 +119,8 @@ processConfigFile() {
          BASE_URL=$(getConfigValue "${KEY}" "baseURL")
          API_KEY=$(cat $(expandPath $(getConfigValue "${KEY}" "credentials")))
          QUERY=$(getConfigValue "${KEY}" "query")
-         DEV_QUERY=$(getConfigValue "${KEY}" "developQuery")
-         updateGitLabRepos "${DIR}" "${BASE_URL}" "${API_KEY}" "${QUERY}" "${DEV_QUERY}"
+         FORK_QUERY=$(getConfigValue "${KEY}" "featureBranchForkQuery")
+         updateGitLabRepos "${DIR}" "${BASE_URL}" "${API_KEY}" "${QUERY}" "${FORK_QUERY}"
       else
          echo "Unknown repo type '${TYPE}'"
          exit 1
