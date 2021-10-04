@@ -15,11 +15,8 @@ alias fromMaster='git whatchanged -p --reverse origin/master..'
 alias fromMasterLog='git log --reverse origin/master..'
 
 # Bash completion - git
-[ -f ${HOMEBREW_PREFIX}/etc/bash_completion ] && . ${HOMEBREW_PREFIX}/etc/bash_completion || {
-    # if not found in /usr/local/etc, try the brew --prefix location
-    [ -f "$(brew --prefix)/etc/bash_completion.d/git-completion.bash" ] && \
-        . $(brew --prefix)/etc/bash_completion.d/git-completion.bash
-}
+source "$(brew --prefix)/etc/bash_completion.d/git-completion.bash"
+source "$(brew --prefix)/etc/bash_completion.d/git-prompt.sh"
 
 grd() {
    # Uses git range-diff to give you a diff of what changes you actually made in your
