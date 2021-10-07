@@ -49,7 +49,8 @@ you need to also follow these steps:
 sudo chown -R YOURUSERNAMEHERE /usr/local/*
 
 # Then, switch back to your primary user, perhaps by running `exit`. Then:
-/usr/local/bin/brew update --force
+[ -f /opt/homebrew/bin/brew ] && BREW="/opt/homebrew/bin/brew" || BREW="/usr/local/bin/brew"
+"${BREW}" update --force
 ```
 
 At this point you should be set up and able to install packages using Homebrew
@@ -118,7 +119,8 @@ order to make our dotfiles work with both installations, we need the
 `HOMEBREW_PREFIX` environment variable, which this script will configure.
 
 ```
-eval "$(/opt/homebrew/bin/brew shellenv)"
+[ -f /opt/homebrew/bin/brew ] && BREW="/opt/homebrew/bin/brew" || BREW="/usr/local/bin/brew"
+echo 'eval "$('${BREW}' shellenv)"' >> ~/.bash_profile
 ```
 
 Finally, we want to use the profile from our dotfiles to configure our
