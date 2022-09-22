@@ -1,3 +1,7 @@
+alias linesOnlyInFileOne='comm -23'
+alias linesOnlyInFileTwo='comm -13'
+alias linesInBothFiles='comm -12'
+
 showSiteCert() {
    SITE="$1"
    openssl s_client -showcerts -servername "${SITE}" -connect "${SITE}":443 2>/dev/null </dev/null
