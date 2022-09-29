@@ -61,10 +61,14 @@ The solutions to those problems were:
       app), update the variables at the top of the script, and then run the script from
       the script editor. Then re-open Outlook and your account should appear there.
    2. **Cert error:** Visit <https://localhost:4433/EWS/Exchange.asmx> in Safari (must be
-      Safari), accept the certificate warning, and then go to the Keychain app and change
-      the security settings to what's shown below.
+      Safari). View the certificate. Drag the certificate icon to Finder (e.g. your
+      Desktop or Downloads folder). Double-click the cert file from Finder to open it in
+      Keychain. Then change the trust settings in the Keychain to "Always Trust" for SSL
+      and X.509 Basic Policy. (The screenshot shows it also being trusted for MIME, but
+      that's not actually necessary)
 
-![](exchange-via-port-forwarding-3.png)
+![](exchange-via-port-forwarding-3a.png)
+![](exchange-via-port-forwarding-3b.png)
 
 
 ## Avoiding Auto Reconfiguration
