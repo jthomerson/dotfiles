@@ -48,7 +48,7 @@ IIRC, there were two main problems:
       cert does not include "localhost". This part I struggled with for a couple days
       until I finally figured out how to get around it. In older versions of Outlook,
       you'd get a popup that told you there was a cert error (the cert isn't signed for
-      "localhost" domain), and then you could jsust accept the error and move on. But the
+      "localhost" domain), and then you could just accept the error and move on. But the
       newer version of Outlook doesn't seem to show that error, so you don't really know
       what's failing. I figured out it was the cert, even though the error wasn't
       appearing.
