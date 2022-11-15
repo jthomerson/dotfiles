@@ -259,6 +259,9 @@ brew install \
    graphviz \
    reattach-to-user-namespace \
    pandoc
+
+brew tap common-fate/granted
+brew install granted
 ```
 
 Some tools require modifications to your `PATH` environment variable. Each of the tools I
