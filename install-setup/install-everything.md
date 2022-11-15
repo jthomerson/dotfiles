@@ -11,6 +11,9 @@ https://dev.to/therealdanvega/new-macbook-setup-for-developers-2nma
 Starting with Catalina, macOS switched to using `zsh` as the default shell.
 Since I prefer `bash`, I switch it back before progressing.
 
+**Note: This may not be necessary, as in more recent versions of macOS, the terminal gives
+you a heads-up that `zsh` is their new preference, but makes you switch to it yourself.**
+
 ```
 chsh -s /bin/bash
 ```
@@ -31,10 +34,12 @@ install them manually.
 
 ### Install Homebrew
 
-Note that this script must be run with a user that can `sudo`.
+**Note that this script must be run with a user that can `sudo`.**
+
+See [brew.sh](https://brew.sh/) for the latest command, which may be:
 
 ```
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
 #### Alternate Installation as Non-Admin
@@ -273,73 +278,41 @@ brew install ffmpeg
 
 ### Install GUI (Previously Cask) Tools
 
-Many GUI apps (i.e. Google Chrome, Firefox, Sublime, etc) can be installed by
-`brew` from _casks_. According to [brew](https://brew.sh), a cask is for:
-
-> "To install, drag this icon..." no more. `brew cask` installs macOS apps,
-> fonts and plugins and other non-open source software.
-
-Note: In older versions of Brew, you used `brew cask install {cask}`, but in
-[v2.6.0](https://brew.sh/2020/12/01/homebrew-2.6.0/) this changed and you use
-standard `brew install` commands (although supposedly some require the
-`--cask` flag from time to time).
-
-Note, also, that many casks install into your `/Applications` directory. That
-will require administrator access. So, if you are running brew as a *non-admin*
-user (someone who can not `sudo`), then you have two options:
-
-   * **Option 1:** Install these applications to your user's `~/Applications`
-     directory. To configure brew to always do this for all cask installs, do
-     this:
-
-        ```
-        echo 'export HOMEBREW_CASK_OPTS="--appdir=~/Applications"' >> ~/.bash_profile
-        ```
-
-      * If you do add the `HOMEBREW_CASK_OPTS` to your Bash profile, you need
-        to start a new terminal session to inherit those changes before
-        proceeding.
-      * Note that some applications don't seem to work well with this method:
-	 * 1Password X (Beta) has issues staying connected to your browser, and
-	   [incessantly complains][1pwx] about not being installed in
-           `/Applications`.
-	 * `maxtex` will *not* (cask) install unless you're an admin because it
-	   asks you to authenticate for a `sudo` command part way through its
-           installation.
-   * **Option 2:** Temporarily make your user an admin (so that your user can
-     `sudo`), or run cask installations from a second user that can `sudo`.
-      * Note: when you make the user an admin, System Preferences will tell you that you
-	have to restart to make it go into effect. You actually don't. However, you will
-	need to later log out, log in as another user so that you can remove admin
-        privileges from your primary user.
-
-**At this time, I recommend option two if you have the ability to do it.** When I was
-using option one, most applications behaved okay, but I had a lot of problems with
-1Password and Google Chrome interactions. I suspect this was primarily on the part of
-1Password (I was / am on X Beta), but I couldn't put up with those issues and decided to
-install the apps where they expected to live - in the `/Applications` directory, which
-required using a user that could sudo. (Note that I later switched to installing 1Password
-from the website download.)
+In earlier versions of this document, I suggested installing GUI apps (i.e.
+Google Chrome, Firefox, Sublime, etc) using Brew. My reason for wanting to do
+so was that it optimized multi-machine consistency - everything was installed
+the same way. But over time, I found that the Brew-based installations often
+caused problems. Perhaps that was because the Brew install ended up configuring
+something slightly different than a normal "download DMG and install" ([for
+example, 1Password][1pwx]). Or, those problems might have been caused by
+corporate policies since I was trying to keep my personal and corporate
+machines similar. In any event, I've decided to just download the following
+apps from the downloaded install packages on their websites, or from the App
+Store:
 
 [1pwx]: https://twitter.com/jthomerson/status/1158830446437982208
 
+   * [1Password](https://1password.com/downloads/mac/)
+   * [Sublime Text](https://www.sublimetext.com/)
+   * [Google Chrome](https://www.google.com/chrome/)
+   * [Firefox](https://www.mozilla.org/en-US/firefox/new/)
+      * Or, [Firefox Developer Edition](https://www.mozilla.org/en-US/firefox/developer/)
+   * [Visual Studio Code](https://code.visualstudio.com/)
+   * [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+   * [Skitch](https://evernote.com/products/skitch)
+   * [Slack](https://slack.com/downloads/mac)
+   * [VLC](https://www.videolan.org/vlc/download-macosx.html)
+   * [Balsamiq Wireframes](https://balsamiq.com/wireframes/desktop/)
+   * [SQLite DB Browser](https://sqlitebrowser.org/)
+
+
+[GraphiQL desktop](https://github.com/skevy/graphiql-app) should still be
+installed via Brew:
 
 ```
-brew install sublime-text &&
-brew install google-chrome &&
-brew install firefox &&
-brew install visual-studio-code &&
-brew install homebrew/cask/docker &&
-brew install db-browser-for-sqlite &&
-brew install dropbox &&
-brew install balsamiq-wireframes &&
-brew install skitch &&
-brew install slack &&
-brew install mactex &&
-brew install vlc &&
-brew install graphiql &&
-brew install google-backup-and-sync
+brew install graphiql
 ```
+
 
 ### Install Python-Based (Non-Brew) Tools:
 
@@ -496,6 +469,8 @@ Run `./install-pdftk.sh`
 
 ### Install Antivirus
 
+**NOTE: This section is out-of-date. I don't necessarily recommend Avira at
+this time, and don't recommend installing GUI apps via Brew (see above).**
 
 If you have a need (e.g. corporate policy for your work VPN, etc) to install an
 antivirus software, you can use [Avira for
@@ -524,6 +499,7 @@ repo and workflow access. When prompted for your password, enter the token inste
 
 ```
 brew install hub
+git config --global hub.protocol https
 hub api
 # Follow the prompts to log in
 ```
@@ -560,6 +536,9 @@ hub api --paginate 'user/repos?affiliation=owner'
 
 ### Install JDK Version and Eclipse
 
+**NOTE: This section about Java is out-of-date. Need to update it the next time
+I install Java on a new machine.**
+
 To install the latest versions of Java (OpenJDK) and Eclipse:
 
 ```
@@ -595,7 +574,16 @@ decided it was better to just use the official installers.
    * [1Password X](https://1password.com/downloads/mac/)
       * And the [Chrome plugin][1pass-chrome]
       * And the [Firefox plugin][1pass-firefox]
-   * [Audacity](https://www.audacityteam.org/download/mac/)
+   * [Keyboard Maestro](https://www.keyboardmaestro.com/main/)
+      * If you're on a computer where you cannot sync your macros through a
+        file sync service, you can download a local copy of them and save them
+        in the `~/.config` directory. Of course, you'll have to manually "sync"
+        them when there's changes.
+
+      ```
+      mkdir ~/.config/keyboard-maestro
+      mv ~/Downloads/Keyboard\ Maestro\ Macros.kmsync ~/.config/keyboard-maestro/
+      ```
 
 [1pass-chrome]: https://chrome.google.com/webstore/detail/1password-%E2%80%93-password-mana/aeblfdkhhhdcdjpifhhbdiojplfjncoa
 [1pass-firefox]: https://addons.mozilla.org/en-US/firefox/addon/1password-x-password-manager/?src=search
