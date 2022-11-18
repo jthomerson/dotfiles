@@ -30,3 +30,13 @@ function assume {
    # Serverless (SLS) fails when AWS_PROFILE is set, so we unset it here
    unset AWS_PROFILE
 }
+
+alias grantedClear='granted sso-tokens clear'
+
+function assumeRemote {
+   cp ~/.granted/config ~/.granted/config.bak
+   sed -i 's/CustomSSOBrowserPath.*/CustomSSOBrowserPath = "THIS_BROWSER_DOES_NOT_EXIST"/' ~/.granted/config
+   source assume $@
+   unset AWS_PROFILE
+   mv ~/.granted/config.bak ~/.granted/config
+}
