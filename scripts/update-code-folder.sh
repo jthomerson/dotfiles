@@ -74,27 +74,29 @@ updateGitLabRepos() {
       PROJECT_FILE="/tmp/.gitlab-project-${PROJECT_ID}.json"
       curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${BASE_URL}/projects/${PROJECT_ID}" > "${PROJECT_FILE}"
       REPO_NAME=$(cat "${PROJECT_FILE}" | jq -r '.name')
+      REPO_DIR_PATH=$(cat "${PROJECT_FILE}" | jq -r '.path')
       echo "------ update GitLab: ${REPO_NAME} (${QUERY}) ------"
       CANONICAL_CLONE_URL=$(cat "${PROJECT_FILE}" | jq -r '.ssh_url_to_repo')
-      if [ -d "./${REPO_NAME}" ]; then
-         echo "${REPO_NAME} exists - fetching"
-         silentPushd "./${REPO_NAME}" && git fetch --all && silentPopd
+      if [ -d "./${REPO_DIR_PATH}" ]; then
+         echo "${REPO_NAME} exists (at ${REPO_DIR_PATH}) - fetching"
+         silentPushd "./${REPO_DIR_PATH}" && git fetch --all && silentPopd
       else
-         echo "${REPO_NAME} does not exist - cloning"
-         FORK_LIST_URK="${BASE_URL}/${FORK_QUERY}${FORK_PAGINATION}"
-         if [ "${FORK_QUERY}" == "null" ]; then
-            FORK_ID=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${FORK_LIST_URK}" | jq -r ". | map(select(.forked_from_project.id == ${PROJECT_ID}))[].id")
+         echo "${REPO_NAME} does not exist (at ${REPO_DIR_PATH}) - cloning"
+         FORK_LIST_URL="${BASE_URL}/${FORK_QUERY}${FORK_PAGINATION}"
+         if [ "${FORK_QUERY}" != "null" ]; then
+            FORK_ID=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${FORK_LIST_URL}" | jq -r ". | map(select(.forked_from_project.id == ${PROJECT_ID}))[].id")
             if [ "${FORK_ID}" == "" ]; then
-               echo "WARNING: No fork found!"
-               git clone "${CANONICAL_CLONE_URL}"
+               echo "WARNING: No fork found! Using ${CANONICAL_CLONE_URL} only"
+               git clone "${CANONICAL_CLONE_URL}" "${REPO_DIR_PATH}"
             else
                FORK_URL=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${BASE_URL}/projects/${FORK_ID}" | jq -r '.ssh_url_to_repo')
                if [ "${FORK_URL}" == "" ]; then
                   echo "Found a fork, but URL for fork not found!"
                   exit 1
                fi
-               git clone "${FORK_URL}"
-               silentPushd "./${REPO_NAME}" && git remote add canonical "${CANONICAL_CLONE_URL}" && git fetch --all && silentPopd
+	       echo "Using ${FORK_URL} as origin; ${CANONICAL_CLONE_URL} as canonical"
+               git clone "${FORK_URL}" "${REPO_DIR_PATH}"
+               silentPushd "./${REPO_DIR_PATH}" && git remote add canonical "${CANONICAL_CLONE_URL}" && git fetch --all && silentPopd
             fi
          else
             git clone "${CANONICAL_CLONE_URL}"
