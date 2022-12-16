@@ -163,3 +163,17 @@ export PATH="${HOMEBREW_PREFIX}/opt/openjdk/bin:$PATH"
 #
 #     PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
 export PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
+
+# From `brew install mysql-client
+# ==> Caveats
+# ==> mysql-client
+# mysql-client is keg-only, which means it was not symlinked into /opt/homebrew,
+# because it conflicts with mysql (which contains client libraries).
+#
+# If you need to have mysql-client first in your PATH, run:
+#   echo 'export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"' >> /Users/jrthomer/.bash_profile
+#
+# For compilers to find mysql-client you may need to set:
+#   export LDFLAGS="-L/opt/homebrew/opt/mysql-client/lib"
+#   export CPPFLAGS="-I/opt/homebrew/opt/mysql-client/include"`
+export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
