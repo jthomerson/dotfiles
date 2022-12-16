@@ -177,3 +177,6 @@ export PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
 #   export LDFLAGS="-L/opt/homebrew/opt/mysql-client/lib"
 #   export CPPFLAGS="-I/opt/homebrew/opt/mysql-client/include"`
 export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
+
+# For Sublime:
+PATH="$PATH:/Applications/Sublime Text.app/Contents/SharedSupport/bin"
