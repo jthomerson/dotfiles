@@ -162,4 +162,4 @@ export PATH="${HOMEBREW_PREFIX}/opt/openjdk/bin:$PATH"
 # to your PATH from your bashrc like:
 #
 #     PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
-PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
+export PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
