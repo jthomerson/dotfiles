@@ -150,7 +150,8 @@ For example:
 rsync -a --progress OTHER_MACHINE:~/.ssh ~/
 rsync -a --progress OTHER_MACHINE:~/.creds ~/
 rsync -a --progress OTHER_MACHINE:~/.aws ~/
-rsync -a --progress OTHER_MACHINE:~/.awsume ~/
+rsync -a --progress OTHER_MACHINE:~/.granted ~/
+rsync -a --progress OTHER_MACHINE:~/.config/hub ~/.config/
 ```
 
 
@@ -501,15 +502,9 @@ repo and workflow access. When prompted for your password, enter the token inste
 [hub-pat]: https://github.com/settings/tokens
 
 ```
+# make sure that ~/.config/hub was copied from another computer or generated
+# with a valid personal access token
 brew install hub
-git config --global hub.protocol https
-hub api
-# Follow the prompts to log in
-```
-
-Now you can do things like:
-
-```
 hub api --paginate 'user/repos?affiliation=owner'
 ```
 
