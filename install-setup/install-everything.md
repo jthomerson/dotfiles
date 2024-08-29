@@ -338,6 +338,46 @@ your `PATH` environment if you want to use the Homebrew-installed Ruby (see
 brew install vim
 ```
 
+### Configure Pushover.net Push Notifications
+
+I use the awesome <https://pushover.net/> to send push notifications to my mobile devices
+from Bash scripts. For example, if you have a long-running script and need to know that
+it's done, you can use:
+
+```
+./some-long-running-script.sh; pushover "Script done with exit code $?"
+```
+
+Or, if you have a script that monitors some resource for changes, you could have it send
+you a push notification each time it finds a change.
+
+To configure it:
+
+   1. Sign up for an account at <https://pushover.net/>
+   2. Install the app on a mobile device and login
+   3. At the bottom of [this page](https://pushover.net/) create an app called "Bash" (or
+      whatever) to get an API key
+   4. Download and configure this script: https://github.com/akusei/pushover-bash
+
+      ```
+      cd ~/whereveryoustoreyourcode/
+      git clone git@github.com:akusei/pushover-bash.git
+      cd pushover-bash
+      mkdir ~/.pushover
+      cp pushover-config ~/.pushover/
+      ```
+
+      Edit `~/.pushover/pushover-config` to add the API key and user key (that's all you
+      need - the rest is just defaults).
+
+      Then I make a symlink in /usr/local/bin so I can just use "pushover" anywhere from
+      any directory:
+
+      ```
+      sudo ln -s ~/whereveryoustoreyourcode/pushover-bash/pushover.sh /usr/local/bin/pushover
+      ```
+   5. Then you acn send messages like this: `pushover "This is a test"`
+
 
 ### Configure VNC
 
