@@ -247,6 +247,8 @@ brew install \
    ag \
    jq \
    colordiff \
+   duckdb \
+   dbeaver-community \
    tree \
    corkscrew \
    ccrypt \
