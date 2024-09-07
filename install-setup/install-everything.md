@@ -257,7 +257,7 @@ brew install \
    ohcount \
    tmux \
    thrift \
-   youtube-dl \
+   yt-dlp \
    asciinema \
    graphviz \
    reattach-to-user-namespace \
