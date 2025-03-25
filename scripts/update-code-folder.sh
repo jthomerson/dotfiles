@@ -37,7 +37,7 @@ updateGitHubRepo() {
    echo "------ update GitHub: ${ORG_NAME}/${REPO_NAME} ------"
    if [ -d "./${REPO_NAME}" ]; then
       echo "${REPO_NAME} exists - fetching"
-      silentPushd "./${REPO_NAME}" && git fetch --all && silentPopd
+      silentPushd "./${REPO_NAME}" && git fetch --all; silentPopd
    else
       echo "${REPO_NAME} does not exist - cloning"
       if [ "${ORG_NAME}" != "" ]; then
@@ -79,7 +79,7 @@ updateGitLabRepos() {
       CANONICAL_CLONE_URL=$(cat "${PROJECT_FILE}" | jq -r '.ssh_url_to_repo')
       if [ -d "./${REPO_DIR_PATH}" ]; then
          echo "${REPO_NAME} exists (at ${REPO_DIR_PATH}) - fetching"
-         silentPushd "./${REPO_DIR_PATH}" && git fetch --all && silentPopd
+         silentPushd "./${REPO_DIR_PATH}" && git fetch --all; silentPopd
       else
          echo "${REPO_NAME} does not exist (at ${REPO_DIR_PATH}) - cloning"
          FORK_LIST_URL="${BASE_URL}/${FORK_QUERY}${FORK_PAGINATION}"
@@ -96,7 +96,7 @@ updateGitLabRepos() {
                fi
 	       echo "Using ${FORK_URL} as origin; ${CANONICAL_CLONE_URL} as canonical"
                git clone "${FORK_URL}" "${REPO_DIR_PATH}"
-               silentPushd "./${REPO_DIR_PATH}" && git remote add canonical "${CANONICAL_CLONE_URL}" && git fetch --all && silentPopd
+               silentPushd "./${REPO_DIR_PATH}" && git remote add canonical "${CANONICAL_CLONE_URL}" && git fetch --all; silentPopd
             fi
          else
             git clone "${CANONICAL_CLONE_URL}"
