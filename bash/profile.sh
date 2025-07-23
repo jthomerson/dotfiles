@@ -14,6 +14,8 @@ source "${SCRIPT_DIR}/path.sh"
 shopt -s autocd
 
 # shortcuts for jumping "up"
+alias 6up="cd ../../../../../.."
+alias 5up="cd ../../../../.."
 alias 4up="cd ../../../.."
 alias 3up="cd ../../.."
 alias 2up="cd ../.."
