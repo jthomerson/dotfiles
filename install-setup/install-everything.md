@@ -4,6 +4,18 @@ Note that many of these steps were from this great writeup:
 https://dev.to/therealdanvega/new-macbook-setup-for-developers-2nma
 
 
+## Install Some Initial GUI Apps
+
+These apps will help get things going.
+
+   * [Firefox Developer Edition](https://www.mozilla.org/en-US/firefox/developer/)
+      * Or, [Firefox](https://www.mozilla.org/en-US/firefox/new/)
+      * Make it the default browser.
+   * [1Password](https://1password.com/downloads/mac/)
+   * [Sublime Text](https://www.sublimetext.com/)
+   * [Tailscale](https://tailscale.com/download)
+
+
 ## Prepare for Installations
 
 ### Change Your Shell to Bash
@@ -28,8 +40,8 @@ xcode-select --install
 ```
 
 If you get an error that says "Can't install the software" you can go to
-https://developer.apple.com/downloads/index.action and download the tools and
-install them manually.
+<https://developer.apple.com/downloads/index.action> and download the tools and install
+them manually.
 
 
 ### Install Homebrew
@@ -42,24 +54,51 @@ See [brew.sh](https://brew.sh/) for the latest command, which may be:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-#### Alternate Installation as Non-Admin
-
-If the user you ran the previous command as is not your primary user (i.e. it
-was a user who could `sudo`, but your day-to-day primary user can not `sudo`),
-but you want your primary user to be able to install packages with Homebrew,
-you need to also follow these steps:
-
-```
-# As admin user:
-sudo chown -R YOURUSERNAMEHERE /usr/local/*
-
-# Then, switch back to your primary user, perhaps by running `exit`. Then:
-[ -f /opt/homebrew/bin/brew ] && BREW="/opt/homebrew/bin/brew" || BREW="/usr/local/bin/brew"
-"${BREW}" update --force
-```
-
 At this point you should be set up and able to install packages using Homebrew
 as your primary user.
+
+
+## Install and Configure iTerm2
+
+Now, install [iTerm2][iTerm2] using Brew.
+
+```
+brew install iterm2
+```
+
+Once you install [iTerm2][iTerm2], you will probably want to configure it to allow for
+jumping / deleting back a word (`Opt+Arrows`, `Opt+Delete`), or a line (`Cmd+Arrows`,
+`Cmd+Delete`). There's a great [Stack Overflow answer][iTerm-keys] on how to do this.
+But, since I've already done that and saved my iTerm configuration into this repo,
+here's the steps to use the committed config:
+
+   * Open iTerm settings
+   * Check the "Load preferences from a custom folder or URL" option (under "General > Preferences")
+   * Browse to / enter the path (e.g. "~/code/jthomerson/dotfiles/app-settings/iterm2")
+
+**Now kill Terminal and from here on out, use iTerm2.**
+
+[iTerm2]: https://www.iterm2.com/
+[iTerm-keys]: https://stackoverflow.com/a/22312856
+
+
+### Grant iTerm2 Full Disk Access
+
+Using System Preferences, grant full disk access to iTerm2.
+
+
+## Install Rectangle
+
+[Rectangle app](https://github.com/rxhanson/Rectangle) is the replacement for
+[Spectacle](https://www.spectacleapp.com/). It allows you to easily move windows
+around with keyboard shortcuts.
+
+```
+brew install rectangle
+```
+
+Then open the app and configure your settings. I use Spectacle defaults because
+I used Spectacle for so long that I have muscle memory with those settings.
 
 
 ## Configure Bash
@@ -94,6 +133,19 @@ chsh -s /opt/homebrew/bin/bash
 If your user account does not have `sudo` permissions, you can also `Cmd+,` in
 Terminal and change the setting from "Shells open with: Default login shell" to
 "Command" and enter `/opt/homebrew/bin/bash`.
+
+
+### Install bash completion
+
+See also:
+
+ * https://salsa.debian.org/debian/bash-completion
+ * https://github.com/bobthecow/git-flow-completion/wiki/Install-Bash-git-completion
+
+
+```
+brew install bash-completion@2
+```
 
 
 ### Start Your Bash Profile
@@ -172,18 +224,6 @@ git config --global user.name "Jeremy Thomerson"
 ```
 
 
-### Install bash completion
-
-See also:
-
- * https://salsa.debian.org/debian/bash-completion
- * https://github.com/bobthecow/git-flow-completion/wiki/Install-Bash-git-completion
-
-
-```
-brew install bash-completion
-```
-
 
 ### Install This Repo
 
@@ -197,41 +237,6 @@ git clone git@github.com:jthomerson/dotfiles.git
 
 
 ## Install Other Apps and Tools
-
-### Install and Configure iTerm2
-
-First, install [iTerm2](https://www.iterm2.com/).
-
-```
-brew install iterm2
-```
-
-Once you install [iTerm2](https://www.iterm2.com/), you will probably want to configure it
-to allow for jumping / deleting back a word (`Opt+Arrows`, `Opt+Delete`), or a line
-(`Cmd+Arrows`, `Cmd+Delete`). There's a great [Stack Overflow
-answer](https://stackoverflow.com/a/22312856) on how to do this. But, since I've already
-done that and saved my iTerm configuration into this repo, here's the steps to use the
-committed config:
-
-   * Open iTerm settings
-   * Check the "Load preferences from a custom folder or URL" option (under "General > Preferences")
-   * Browse to / enter the path (e.g. "~/code/jthomerson/dotfiles/app-settings/iterm2")
-
-**Now kill Terminal and from here on out, use iTerm2.**
-
-
-### Install Rectangle
-
-[Rectangle app](https://github.com/rxhanson/Rectangle) is the replacement for
-[Spectacle](https://www.spectacleapp.com/). It allows you to easily move windows
-around with keyboard shortcuts.
-
-```
-brew install rectangle
-```
-
-Then open the app and configure your settings. I use Spectacle defaults because
-I used Spectacle for so long that I have muscle memory with those settings.
 
 
 ### Install Miscellaneous Tools
@@ -248,6 +253,7 @@ brew install \
    jq \
    colordiff \
    duckdb \
+   db-browser-for-sqlite \
    dbeaver-community \
    tree \
    corkscrew \
@@ -261,7 +267,9 @@ brew install \
    asciinema \
    graphviz \
    reattach-to-user-namespace \
-   pandoc
+   pandoc \
+   vlc \
+   postman
 
 brew tap common-fate/granted
 brew install granted
@@ -274,69 +282,34 @@ recommended changes are already made in [../bash/path.sh](../bash/path.sh). Ever
 has been made to make those changes safe even if you don't install these tools.
 
 ```
-brew install coreutils
-brew install gnu-sed
-brew install grep
-brew install openssl@1.1
-brew install python
-brew install ffmpeg
+brew install \
+   coreutils \
+   gnu-sed \
+   grep \
+   openssl@1.1 \
+   python \
+   ffmpeg
 ```
 
-### Install GUI (Previously Cask) Tools
+When I was setting this up in 2025-11, I switched from `pip install yq` to
+`brew install yq`. We'll see if this was a good idea or not.
 
-In earlier versions of this document, I suggested installing GUI apps (i.e.
-Google Chrome, Firefox, Sublime, etc) using Brew. My reason for wanting to do
-so was that it optimized multi-machine consistency - everything was installed
-the same way. But over time, I found that the Brew-based installations often
-caused problems. Perhaps that was because the Brew install ended up configuring
-something slightly different than a normal "download DMG and install" ([for
-example, 1Password][1pwx]). Or, those problems might have been caused by
-corporate policies since I was trying to keep my personal and corporate
-machines similar. In any event, I've decided to just download the following
-apps from the downloaded install packages on their websites, or from the App
-Store:
+```
+brew install yq
+```
 
-[1pwx]: https://twitter.com/jthomerson/status/1158830446437982208
 
-   * [1Password](https://1password.com/downloads/mac/)
-   * [Sublime Text](https://www.sublimetext.com/)
+### Install More GUI Apps
+
+   * [Remember the Milk](https://www.rememberthemilk.com/services/)
+   * [Keyboard Maestro](https://www.keyboardmaestro.com/main/) ([old versions](https://files.stairways.com/))
+   * [Notion](https://www.notion.com/desktop)
    * [Google Chrome](https://www.google.com/chrome/)
-   * [Firefox](https://www.mozilla.org/en-US/firefox/new/)
-      * Or, [Firefox Developer Edition](https://www.mozilla.org/en-US/firefox/developer/)
    * [Visual Studio Code](https://code.visualstudio.com/)
    * [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-   * [Skitch](https://evernote.com/products/skitch)
-   * [Slack](https://slack.com/downloads/mac)
-   * [VLC](https://www.videolan.org/vlc/download-macosx.html)
    * [Balsamiq Wireframes](https://balsamiq.com/wireframes/desktop/)
-   * [SQLite DB Browser](https://sqlitebrowser.org/)
+   * [Google Drive](https://workspace.google.com/products/drive/#download)
 
-
-[GraphiQL desktop](https://github.com/skevy/graphiql-app) should still be
-installed via Brew:
-
-```
-brew install graphiql
-```
-
-
-### Install Python-Based (Non-Brew) Tools:
-
-```
-pip install yq
-pip install awsume
-pip install awsume-console-plugin
-```
-
-### Upgrade and Configure Vim
-
-Vim installs Ruby, which requires additional entries in your profile to update
-your `PATH` environment if you want to use the Homebrew-installed Ruby (see
-[../bash/path.sh](../bash/path.sh)).
-
-```
-brew install vim
-```
 
 ### Configure Pushover.net Push Notifications
 
@@ -457,42 +430,7 @@ If you want to unload / stop it,
 ### Install Node Version Manager (nvm)
 
 Note: you should check what the latest version is by visiting
-https://github.com/nvm-sh/nvm#installation-and-update
-
-```
-# If you are running this on an M1 Mac and you need to use versions of Node prior to 15.3
-# (which is the first version that supported the arm64 architecture), you will need to
-# first start a terminal session using the `arch` tool to run the terminal in i386. Do
-# that by following this step first:
-arch -x86_64 zsh
-
-# That will start a zsh shell in i386 (bash isn't universal, so can't be started the same
-# way). Then when you run the normal installation (next command), everything will run
-# fine.
-
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-```
-
-Then you'll want to at least set up your default node and NPM versions, e.g.:
-
-```
-nvm install 12
-```
-
-Installing a version of Node that did not support ARM will result in a long installation
-process, as NVM will need to compile Node.
-
-When that's done, if you want to confirm that your older version of Node is running as an
-Intel architecture (using Rosetta, which it will need to do), you can run this command:
-
-```
-nvm use 12
-node -p process.arch
-```
-
-If it prints `arm64`, then Node is running on the ARM architecture, which it doesn't
-support. See the [NVM homepage](https://github.com/nvm-sh/nvm#macos-troubleshooting)
-troubleshooting section for more information.
+<https://github.com/nvm-sh/nvm#installation-and-update>
 
 
 ### Install Global NPM Modules
@@ -509,28 +447,10 @@ npm install --global grunt-cli \
 
 ### Install PDF Toolkit (pdftk)
 
-Run `./install-pdftk.sh`
-
-
-
-### Install Antivirus
-
-**NOTE: This section is out-of-date. I don't necessarily recommend Avira at
-this time, and don't recommend installing GUI apps via Brew (see above).**
-
-If you have a need (e.g. corporate policy for your work VPN, etc) to install an
-antivirus software, you can use [Avira for
-free](https://www.avira.com/en/free-antivirus-mac). If, like me, you want to
-install everything possible via CLI, just do this:
-
 ```
-brew install avira-antivirus
+dotfiles
+./install-setup/install-pdftk.sh
 ```
-
-Then follow the on-screen instructions.
-
-Note: There is no brew installer for JunOS Pulse, if that's what your company
-uses. You'll need to download that from your company and manually install it.
 
 
 ### Install GitHub CLI
@@ -573,68 +493,19 @@ hub api --paginate 'user/repos?affiliation=owner'
    * Click the Google option, and follow the prompts to connect
 
 
-
-### Install JDK Version and Eclipse
-
-**NOTE: This section about Java is out-of-date. Need to update it the next time
-I install Java on a new machine.**
-
-To install the latest versions of Java (OpenJDK) and Eclipse:
-
-```
-brew cask install java
-brew cask install eclipse-jee
-brew install maven
-```
-
-Note that this installs the latest version of Java. Presumably you can use the
-compatibility flags to determine which version you're targeting (rather than installing
-additional older versions).
-
-#### Alternative Java Installation
-
-I need to figure out which of these two methods (above or this one) is better, but for now
-I'm just documenting both.
-
-```
-brew install openjdk
-```
-
-
-## Manual Installs
-
-These apps you will want to download and install from their websites. I've previously
-tried using the casks for some of these, but at some point had problems with them and
-decided it was better to just use the official installers.
-
-   * [Remember the Milk](https://www.rememberthemilk.com/services/)
-      * On computers with restrictive IT policies, it may be best to install this in
-        `~/Applications` so that it has permissions to update itself. Otherwise, I was
-        constantly nagged with permissions prompts to install updates.
-   * [1Password X](https://1password.com/downloads/mac/)
-      * And the [Chrome plugin][1pass-chrome]
-      * And the [Firefox plugin][1pass-firefox]
-   * [Keyboard Maestro](https://www.keyboardmaestro.com/main/)
-      * If you're on a computer where you cannot sync your macros through a
-        file sync service, you can download a local copy of them and save them
-        in the `~/.config` directory. Of course, you'll have to manually "sync"
-        them when there's changes.
-
-      ```
-      mkdir ~/.config/keyboard-maestro
-      mv ~/Downloads/Keyboard\ Maestro\ Macros.kmsync ~/.config/keyboard-maestro/
-      ```
-
-[1pass-chrome]: https://chrome.google.com/webstore/detail/1password-%E2%80%93-password-mana/aeblfdkhhhdcdjpifhhbdiojplfjncoa
-[1pass-firefox]: https://addons.mozilla.org/en-US/firefox/addon/1password-x-password-manager/?src=search
-
-
-
 ## Mac App Store Apps
 
 I also install these, which I've purchased on the App Store:
 
    * [Pixelmator Pro](https://apps.apple.com/us/app/pixelmator-pro/id1289583905?mt=12)
+   * Final Cut Pro, et al - go to the purchases section of the App Store app and download
+
+And these free apps:
+
+   * [OneDrive](https://apps.apple.com/us/app/onedrive/id823766827?mt=12)
    * [Microsoft OneNote](https://apps.apple.com/us/app/microsoft-onenote/id784801555?mt=12) (free)
-   * Final Cut Pro, et al
+   * [WhatsApp](https://apps.apple.com/us/app/whatsapp-messenger/id310633997
+WhatsApp Messenger)
    * Microsoft Office apps
+   * [Skitch](https://apps.apple.com/us/app/skitch-snap-mark-up-share/id425955336?mt=12)
+   * [Slack](https://apps.apple.com/us/app/slack-for-desktop/id803453959?mt=12)
