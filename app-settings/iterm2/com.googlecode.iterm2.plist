@@ -14,6 +14,8 @@
 	<true/>
 	<key>DoubleClickPerformsSmartSelection</key>
 	<true/>
+	<key>EnableAPIServer</key>
+	<true/>
 	<key>GlobalKeyMap</key>
 	<dict>
 		<key>0x19-0x60000</key>
@@ -163,6 +165,10 @@
 	<true/>
 	<key>JobName</key>
 	<false/>
+	<key>NeverWarnAboutShortLivedSessions_72F6ACFA-3182-4E0E-894A-BF60CA267C3B</key>
+	<true/>
+	<key>NeverWarnAboutShortLivedSessions_72F6ACFA-3182-4E0E-894A-BF60CA267C3B_selection</key>
+	<integer>0</integer>
 	<key>New Bookmarks</key>
 	<array>
 		<dict>
