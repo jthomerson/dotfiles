@@ -245,6 +245,7 @@ Install some miscellaneous tools that you might like:
 
 ```
 brew install \
+   1password-cli \
    parallel \
    wget \
    awscli \
