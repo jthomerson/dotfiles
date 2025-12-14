@@ -300,6 +300,18 @@ brew install yq
 ```
 
 
+### Install `uv` for Python / MCP Servers
+
+Get current command from [Astral](https://docs.astral.sh/uv/getting-started/).
+Will look like this probably:
+
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then you can install Python (e.g. `uv python install 3.10`) and other tools.
+
+
 ### Install More GUI Apps
 
    * [Remember the Milk](https://www.rememberthemilk.com/services/)
