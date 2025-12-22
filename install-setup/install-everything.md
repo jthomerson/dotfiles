@@ -245,6 +245,7 @@ Install some miscellaneous tools that you might like:
 
 ```
 brew install \
+   rustup \
    1password-cli \
    parallel \
    wget \
@@ -468,8 +469,12 @@ dotfiles
 
 ### Install GitHub CLI
 
+#### Install the Old GitHub Tool (`hub`)
+
 The [GitHub CLI tool](https://hub.github.com/) is handy to automate some tasks, and
-especially for calling the GitHub APIs from the CLI.
+especially for calling the GitHub APIs from the CLI. It's used by my code-repo
+automation scripts, but eventually needs to be updated to use the newer tool
+(`gh`, below).
 
 Before logging in, you'll need to create a [personal access token][hub-pat]. Give it
 repo and workflow access. When prompted for your password, enter the token instead.
@@ -489,6 +494,13 @@ hub api --paginate 'user/repos?affiliation=owner'
    * Old: https://github.com/github/hub
    * Comparison: https://github.com/cli/cli#comparison-with-hub
    * More detailed why: https://github.com/cli/cli/blob/trunk/docs/gh-vs-hub.md
+
+#### Install the New GitHub Tool (`gh`)
+
+```bash
+brew install gh
+gh auth login
+```
 
 
 ### Configure iMessage

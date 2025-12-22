@@ -164,7 +164,7 @@ export PATH="${HOMEBREW_PREFIX}/opt/openjdk/bin:$PATH"
 #     PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
 export PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
 
-# From `brew install mysql-client
+# From `brew install mysql-client`
 # ==> Caveats
 # ==> mysql-client
 # mysql-client is keg-only, which means it was not symlinked into /opt/homebrew,
@@ -179,4 +179,16 @@ export PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
 export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
 
 # For Sublime:
-PATH="$PATH:/Applications/Sublime Text.app/Contents/SharedSupport/bin"
+export PATH="$PATH:/Applications/Sublime Text.app/Contents/SharedSupport/bin"
+
+# From `brew install rustup`
+# If you have `rust` installed, ensure you have "$(brew --prefix rustup)/bin"
+# before "$(brew --prefix)/bin" in your $PATH:
+#   https://rust-lang.github.io/rustup/installation/already-installed-rust.html
+#
+# rustup is keg-only, which means it was not symlinked into /opt/homebrew,
+# because it conflicts with rust.
+#
+# If you need to have rustup first in your PATH, run:
+#   echo 'export PATH="/opt/homebrew/opt/rustup/bin:$PATH"' >> /Users/jthomerson/.bash_profile
+export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
