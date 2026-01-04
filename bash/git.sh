@@ -3,11 +3,11 @@ alias gitff='git pull --ff-only'
 
 alias gitremotebranch='git for-each-ref --format='"'"'%(upstream:short)'"'"' $(git symbolic-ref -q HEAD)'
 
-alias mychanges='git whatchanged -m -p --reverse `gitremotebranch`..'
+alias mychanges='git log --patch --reverse `gitremotebranch`..'
 alias mychangeslog='git log --oneline --reverse `gitremotebranch`..'
 alias mychangesloglong='git log --reverse `gitremotebranch`..'
 
-alias theirchanges='git whatchanged -m -p --reverse ..`gitremotebranch`'
+alias theirchanges='git log --patch --reverse ..`gitremotebranch`'
 alias theirchangeslog='git log --oneline --reverse ..`gitremotebranch`'
 alias theirchangesloglong='git log --reverse ..`gitremotebranch`'
 
