@@ -192,3 +192,9 @@ export PATH="$PATH:/Applications/Sublime Text.app/Contents/SharedSupport/bin"
 # If you need to have rustup first in your PATH, run:
 #   echo 'export PATH="/opt/homebrew/opt/rustup/bin:$PATH"' >> /Users/jthomerson/.bash_profile
 export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
+
+# For Android development:
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export NDK_HOME="$ANDROID_HOME/ndk/$(ls -1 $ANDROID_HOME/ndk | tail -1)"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
+export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
