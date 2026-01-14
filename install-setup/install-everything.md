@@ -275,6 +275,9 @@ brew install \
 
 brew tap common-fate/granted
 brew install granted
+
+brew tap hashicorp/tap
+brew install hashicorp/tap/vault
 ```
 
 Some tools require modifications to your `PATH` environment variable. Each of the tools I
