@@ -108,6 +108,60 @@ updateGitLabRepos() {
    silentPopd
 }
 
+updateADORepos() {
+   DIR="${1}"
+   ORG="${2}"
+   PROJECT="${3}"
+   PAT="${4}"
+   CONFIG_KEY="${5}"
+
+   mkdir -p "${DIR}"
+   silentPushd "${DIR}"
+
+   API_URL="https://dev.azure.com/${ORG}/${PROJECT}/_apis/git/repositories?api-version=7.0"
+   HTTP_CODE=$(curl -s -o /tmp/.ado-repos.json -w "%{http_code}" -u ":${PAT}" "${API_URL}")
+   if [ "${HTTP_CODE}" != "200" ]; then
+      echo "ERROR: ADO API returned HTTP ${HTTP_CODE} for ${API_URL}"
+      cat /tmp/.ado-repos.json
+      rm -f /tmp/.ado-repos.json
+      silentPopd
+      return 1
+   fi
+   REPOS_JSON=$(cat /tmp/.ado-repos.json)
+   rm -f /tmp/.ado-repos.json
+   PREFIXES_JSON=$(jq -c '.["'"${CONFIG_KEY}"'"].prefixes // []' "${CONFIG_FILE}")
+
+   echo "${REPOS_JSON}" | jq -r --argjson prefixes "${PREFIXES_JSON}" '
+      .value[] |
+      if ($prefixes | length) == 0 then .name
+      else
+         select(.name as $n |
+            $prefixes | map(rtrimstr("*")) |
+            any(. as $p | $n | startswith($p))
+         ) | .name
+      end
+   ' | while IFS= read -r REPO_NAME; do
+      updateADORepo "${REPO_NAME}" "${ORG}" "${PROJECT}"
+   done
+
+   silentPopd
+}
+
+updateADORepo() {
+   REPO_NAME="${1}"
+   ORG="${2}"
+   PROJECT="${3}"
+   CLONE_URL="git@ssh.dev.azure.com:v3/${ORG}/${PROJECT}/${REPO_NAME}"
+   echo "------ update ADO: ${ORG}/${PROJECT}/${REPO_NAME} ------"
+   if [ -d "./${REPO_NAME}" ]; then
+      echo "${REPO_NAME} exists - fetching"
+      silentPushd "./${REPO_NAME}" && git fetch --all; silentPopd
+   else
+      echo "${REPO_NAME} does not exist - cloning"
+      git clone "${CLONE_URL}" "${REPO_NAME}"
+   fi
+}
+
 processConfigFile() {
    for KEY in $(cat "${CONFIG_FILE}" | jq -r '. | to_entries[].key'); do
       TYPE=$(getConfigValue "${KEY}" "type")
@@ -123,6 +177,11 @@ processConfigFile() {
          QUERY=$(getConfigValue "${KEY}" "query")
          FORK_QUERY=$(getConfigValue "${KEY}" "featureBranchForkQuery")
          updateGitLabRepos "${DIR}" "${BASE_URL}" "${API_KEY}" "${QUERY}" "${FORK_QUERY}"
+      elif [ "${TYPE}" == "ado" ]; then
+         ORG=$(getConfigValue "${KEY}" "organization")
+         PROJECT=$(getConfigValue "${KEY}" "project")
+         PAT=$(cat $(expandPath $(getConfigValue "${KEY}" "credentials")))
+         updateADORepos "${DIR}" "${ORG}" "${PROJECT}" "${PAT}" "${KEY}"
       else
          echo "Unknown repo type '${TYPE}'"
          exit 1
