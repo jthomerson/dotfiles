@@ -105,3 +105,27 @@ requireProgram() {
       exit 1
    fi
 }
+
+compressPDF() {
+   if [[ $# -ne 2 ]]; then
+      echo "Usage: compressPDF <input.pdf> <output.pdf>"
+      return 1
+   fi
+   if [[ ! -f "$1" ]]; then
+      echo "Error: input file not found: $1"
+      return 1
+   fi
+   if [[ ! -d "$(dirname "$2")" ]]; then
+      echo "Error: output directory does not exist: $(dirname "$2")"
+      return 1
+   fi
+
+   # Note: /printer messes up color settings, but has higher DPI (300), so we
+   # override the default DPI for /ebook (150) and use a better algo for downsampling
+   gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 \
+       -dPDFSETTINGS=/ebook \
+       -dColorImageResolution=300 -dGrayImageResolution=300 -dMonoImageResolution=300 \
+       -dColorImageDownsampleType=/Bicubic \
+       -dNOPAUSE -dQUIET -dBATCH \
+       -sOutputFile="$2" "$1"
+}
