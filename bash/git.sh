@@ -23,10 +23,22 @@ grd() {
    # branch (against your branch's upstream), even if you've rebased your local branch and
    # pulled in extra commits during the rebase.
    #
-   # Usage: `grd {branch_name} {merge_base}`
-   # Both arguments are optional. If omitted:
-   #  - branch_name will be the branch you're on
-   #  - merge_base will be origin/master
+   # Usage:
+   #   grd                          - range-diff current branch vs its upstream
+   #   grd {commit_hash}            - range-diff HEAD vs the given commit
+   #   grd {branch_name}            - range-diff given branch vs its upstream
+   #   grd {branch_name} {base}     - range-diff given branch vs its upstream,
+   #                                  using {base} for merge-base calculation
+   if [ "$1" != "" ] && ! git rev-parse --verify --quiet "refs/heads/$1" > /dev/null 2>&1; then
+      # Argument is not a branch name; treat it as a commit hash.
+      # range-diff: merge-base of that hash and HEAD, then hash..HEAD
+      OLD_TIP="$1"
+      MERGE_BASE="$(git merge-base "${OLD_TIP}" HEAD)"
+      echo "Comparing HEAD to ${OLD_TIP} using merge base ${MERGE_BASE}"
+      git range-diff "${MERGE_BASE}" "${OLD_TIP}" HEAD
+      return
+   fi
+
    LOCAL_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
    BASE_BRANCH=origin/master
 
