@@ -14,9 +14,7 @@ alias theirchangesloglong='git log --reverse ..`gitremotebranch`'
 alias fromMaster='git whatchanged -p --reverse origin/master..'
 alias fromMasterLog='git log --reverse origin/master..'
 
-# Bash completion - git
-source "$(brew --prefix)/etc/bash_completion.d/git-completion.bash"
-source "$(brew --prefix)/etc/bash_completion.d/git-prompt.sh"
+# Note: no git completion sourcing needed — zsh provides it natively via compinit
 
 grd() {
    # Uses git range-diff to give you a diff of what changes you actually made in your

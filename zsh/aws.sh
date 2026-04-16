@@ -9,6 +9,7 @@ alias unsetAWS='unset $(env | grep AWS | grep -v AWS_REGION | grep -v AWS_DEFAUL
 
 
 # For awsume (https://awsu.me)
+# Note: `complete -F` and `compgen` work in zsh via bashcompinit, which is loaded in rc.sh
 alias awsume=". awsume"
 
 _awsume() {

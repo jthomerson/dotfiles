@@ -195,6 +195,8 @@ export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
 
 # For Android development:
 export ANDROID_HOME="$HOME/Library/Android/sdk"
-export NDK_HOME="$ANDROID_HOME/ndk/$(ls -1 $ANDROID_HOME/ndk | tail -1)"
+if [ -d "$ANDROID_HOME/ndk" ]; then
+   export NDK_HOME="$ANDROID_HOME/ndk/$(ls -1 "$ANDROID_HOME/ndk" | tail -1)"
+fi
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
 export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
