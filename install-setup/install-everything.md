@@ -18,21 +18,6 @@ These apps will help get things going.
 
 ## Prepare for Installations
 
-### Change Your Shell to Bash
-
-Starting with Catalina, macOS switched to using `zsh` as the default shell.
-Since I prefer `bash`, I switch it back before progressing.
-
-**Note: This may not be necessary, as in more recent versions of macOS, the terminal gives
-you a heads-up that `zsh` is their new preference, but makes you switch to it yourself.**
-
-```
-chsh -s /bin/bash
-```
-
-**Now restart Terminal**
-
-
 ### Set up Xcode Command Line Tools Package
 
 ```
@@ -58,33 +43,42 @@ At this point you should be set up and able to install packages using Homebrew
 as your primary user.
 
 
-## Install and Configure iTerm2
+## Install and Configure WezTerm
 
-Now, install [iTerm2][iTerm2] using Brew.
+Now, install [WezTerm][wezterm] using Brew.
 
 ```
-brew install iterm2
+brew install --cask wezterm
 ```
 
-Once you install [iTerm2][iTerm2], you will probably want to configure it to allow for
-jumping / deleting back a word (`Opt+Arrows`, `Opt+Delete`), or a line (`Cmd+Arrows`,
-`Cmd+Delete`). There's a great [Stack Overflow answer][iTerm-keys] on how to do this.
-But, since I've already done that and saved my iTerm configuration into this repo,
-here's the steps to use the committed config:
-
-   * Open iTerm settings
-   * Check the "Load preferences from a custom folder or URL" option (under "General > Preferences")
-   * Browse to / enter the path (e.g. "~/code/jthomerson/dotfiles/app-settings/iterm2")
-
-**Now kill Terminal and from here on out, use iTerm2.**
-
-[iTerm2]: https://www.iterm2.com/
-[iTerm-keys]: https://stackoverflow.com/a/22312856
+[wezterm]: https://wezterm.org/index.html
 
 
-### Grant iTerm2 Full Disk Access
+### Install a Nerd Font
 
-Using System Preferences, grant full disk access to iTerm2.
+WezTerm (and Starship) need a [Nerd Font](https://www.nerdfonts.com/) for icons and
+glyphs to render correctly.
+
+```
+brew install --cask font-comic-shanns-mono-nerd-font
+```
+
+Then set it as the font in `~/.config/wezterm/wezterm.lua`.
+
+
+### Grant WezTerm Full Disk Access
+
+Using System Preferences, grant full disk access to WezTerm.
+
+
+### Configure WezTerm
+
+Link the config from the dotfiles repo:
+
+```
+mkdir -p ~/.config/wezterm
+ln -sf ~/code/jthomerson/dotfiles/app-settings/wezterm/wezterm.lua ~/.config/wezterm/wezterm.lua
+```
 
 
 ## Install Rectangle
@@ -100,91 +94,52 @@ brew install rectangle
 Then open the app and configure your settings. I use Spectacle defaults because
 I used Spectacle for so long that I have muscle memory with those settings.
 
+To restore settings from another machine, copy `RectangleConfig.json` from
+`~/Downloads` (or wherever you backed it up) into Rectangle's preferences import.
 
-## Configure Bash
 
-### Upgrade bash
+## Configure Terminal Apps
 
-First, install the latest version of bash.
+### Configure Zsh
 
-```
-# See what version you have
-echo "Current bash version: ${BASH_VERSION}" && bash --version
+macOS ships with zsh as the default shell. The dotfiles live in `zsh/rc.sh`.
 
-# Then install the latest
-brew install bash
-```
-
-Now make it available as a shell:
+#### Install zsh plugins
 
 ```
-# Note that you need to run this as a user who can sudo
-sudo bash -c 'echo /opt/homebrew/bin/bash >> /etc/shells'
+brew install zsh-syntax-highlighting zsh-autosuggestions starship
 ```
 
-And then make it your shell. You should run this as your primary user, as well as any
-other user that you want to use this updated version of bash as their shell (for example,
-if you have a second user that can sudo, you may want to run it as that user as well).
+#### Start Your zsh Profile
 
-```
-chsh -s /opt/homebrew/bin/bash
-```
+Pick a "friendly name" for this machine — it appears in the prompt where your
+hostname would normally be.
 
-If your user account does not have `sudo` permissions, you can also `Cmd+,` in
-Terminal and change the setting from "Shells open with: Default login shell" to
-"Command" and enter `/opt/homebrew/bin/bash`.
+Create (or replace) `~/.zshrc` with the following, substituting your machine's
+friendly name:
 
-
-### Install bash completion
-
-See also:
-
- * https://salsa.debian.org/debian/bash-completion
- * https://github.com/bobthecow/git-flow-completion/wiki/Install-Bash-git-completion
-
-
-```
-brew install bash-completion@2
-```
-
-
-### Start Your Bash Profile
-
-Let's get your Bash profile started. First, pick a "friendly name" for this
-machine. This will appear in the terminal where your hostname would normally
-appear. We will put the friendly name as the first name of your bash profile.
-We'll also make a backup of any existing bash profile in case you have one.
-
-```
-cat ~/.bash_profile > ~/.bash_profile.$(date +%s).bak
-echo 'FRIENDLYHOSTNAME="mym1"' > ~/.bash_profile
-```
-
-Now we want to reset the PATH variable each time your profile is reset. We do
-this so that you start from a clean slate instead of just appending (or
-prepending) new paths to your already-modified PATH variable. This line will
-reset it to the Mac default before proceeding.
-
-```
-echo 'export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"' >> ~/.bash_profile
-```
-
-Now we want to allow Homebrew to add its variables to the profile each time our
-profile is reset. This is especially needed because on ARM (M1) machines,
-Homebrew installs to `/opt/homebrew` whereas on x86 installs to `/usr/local`. In
-order to make our dotfiles work with both installations, we need the
-`HOMEBREW_PREFIX` environment variable, which this script will configure.
-
-```
+```zsh
+FRIENDLYHOSTNAME="mym1"
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 [ -f /opt/homebrew/bin/brew ] && BREW="/opt/homebrew/bin/brew" || BREW="/usr/local/bin/brew"
-echo 'eval "$('${BREW}' shellenv)"' >> ~/.bash_profile
+eval "$($BREW shellenv)"
+export PATH="$HOME/.local/bin:$PATH"
+
+HISTFILE=~/.zsh_history
+
+source ~/code/jthomerson/dotfiles/zsh/rc.sh
 ```
 
-Finally, we want to use the profile from our dotfiles to configure our
-environment, so we add this line to our local profile.
+`rc.sh` handles everything else: PATH additions, aliases, functions, git, AWS
+helpers, Starship prompt, syntax highlighting, and autosuggestions.
+
+#### Configure Starship
+
+Link the Starship config from the dotfiles repo:
 
 ```
-echo 'source ~/code/jthomerson/dotfiles/bash/profile.sh' >> ~/.bash_profile
+mkdir -p ~/.config
+ln -sf ~/code/jthomerson/dotfiles/app-settings/starship/starship.toml ~/.config/starship.toml
 ```
 
 **Now start a new terminal session to inherit those changes.**
@@ -204,6 +159,7 @@ rsync -a --progress OTHER_MACHINE:~/.creds ~/
 rsync -a --progress OTHER_MACHINE:~/.aws ~/
 rsync -a --progress OTHER_MACHINE:~/.granted ~/
 rsync -a --progress OTHER_MACHINE:~/.config/hub ~/.config/
+rsync -a --progress OTHER_MACHINE:~/.config/gh ~/.config/
 ```
 
 
@@ -221,6 +177,7 @@ Now configure it:
 ```
 git config --global user.email "jeremy@thomersonfamily.com"
 git config --global user.name "Jeremy Thomerson"
+git config --global core.excludesfile ~/code/jthomerson/dotfiles/app-settings/git/.gitignore-global
 ```
 
 
@@ -257,6 +214,7 @@ brew install \
    duckdb \
    db-browser-for-sqlite \
    dbeaver-community \
+   helix \
    tree \
    corkscrew \
    ccrypt \
@@ -283,7 +241,7 @@ brew install hashicorp/tap/vault
 Some tools require modifications to your `PATH` environment variable. Each of the tools I
 recommend installing in the next code block requires such a change. However, you will not
 need to manually make any changes to your `PATH` environment variable because the
-recommended changes are already made in [../bash/path.sh](../bash/path.sh). Every attempt
+recommended changes are already made in [../zsh/path.sh](../zsh/path.sh). Every attempt
 has been made to make those changes safe even if you don't install these tools.
 
 ```
@@ -316,6 +274,18 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Then you can install Python (e.g. `uv python install 3.10`) and other tools.
 
 
+### Install Claude Code
+
+Get the current install command from [claude.ai/code](https://claude.ai/code).
+Will look like this probably:
+
+```
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+This installs to `~/.local/bin/claude`, which is already on `PATH` via `~/.zshrc`.
+
+
 ### Install More GUI Apps
 
    * [Remember the Milk](https://www.rememberthemilk.com/services/)
@@ -324,14 +294,14 @@ Then you can install Python (e.g. `uv python install 3.10`) and other tools.
    * [Google Chrome](https://www.google.com/chrome/)
    * [Visual Studio Code](https://code.visualstudio.com/)
    * [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-   * [Balsamiq Wireframes](https://balsamiq.com/wireframes/desktop/)
+   * [Balsamiq Wireframes](https://balsamiq.com/wireframes/balsamiq.com/wireframes/desktop/)
    * [Google Drive](https://workspace.google.com/products/drive/#download)
 
 
 ### Configure Pushover.net Push Notifications
 
 I use the awesome <https://pushover.net/> to send push notifications to my mobile devices
-from Bash scripts. For example, if you have a long-running script and need to know that
+from shell scripts. For example, if you have a long-running script and need to know that
 it's done, you can use:
 
 ```
@@ -345,7 +315,7 @@ To configure it:
 
    1. Sign up for an account at <https://pushover.net/>
    2. Install the app on a mobile device and login
-   3. At the bottom of [this page](https://pushover.net/) create an app called "Bash" (or
+   3. At the bottom of [this page](https://pushover.net/) create an app called "Shell" (or
       whatever) to get an API key
    4. Download and configure this script: https://github.com/akusei/pushover-bash
 
@@ -366,7 +336,7 @@ To configure it:
       ```
       sudo ln -s ~/whereveryoustoreyourcode/pushover-bash/pushover.sh /usr/local/bin/pushover
       ```
-   5. Then you acn send messages like this: `pushover "This is a test"`
+   5. Then you can send messages like this: `pushover "This is a test"`
 
 
 ### Configure VNC
@@ -532,8 +502,7 @@ And these free apps:
 
    * [OneDrive](https://apps.apple.com/us/app/onedrive/id823766827?mt=12)
    * [Microsoft OneNote](https://apps.apple.com/us/app/microsoft-onenote/id784801555?mt=12) (free)
-   * [WhatsApp](https://apps.apple.com/us/app/whatsapp-messenger/id310633997
-WhatsApp Messenger)
+   * [WhatsApp](https://apps.apple.com/us/app/whatsapp-messenger/id310633997)
    * Microsoft Office apps
    * [Skitch](https://apps.apple.com/us/app/skitch-snap-mark-up-share/id425955336?mt=12)
    * [Slack](https://apps.apple.com/us/app/slack-for-desktop/id803453959?mt=12)
