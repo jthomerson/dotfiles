@@ -1,6 +1,7 @@
 -- See https://www.youtube.com/watch?v=e34qllePuoc
 local wezterm = require("wezterm")
 local act = wezterm.action
+local resurrect = wezterm.plugin.require("https://github.com/MLFlexer/resurrect.wezterm")
 
 config = wezterm.config_builder()
 
@@ -62,8 +63,53 @@ config = {
             end),
          },
       },
+
+      -- Cmd+Shift+S: save workspace state (resurrect.wezterm)
+      {
+         key = "s", mods = "CMD|SHIFT",
+         action = wezterm.action_callback(function(_, _)
+            resurrect.state_manager.save_state(resurrect.workspace_state.get_workspace_state())
+         end),
+      },
+      -- Cmd+Shift+O: open a saved state via fuzzy finder (resurrect.wezterm)
+      {
+         key = "o", mods = "CMD|SHIFT",
+         action = wezterm.action_callback(function(win, pane)
+            resurrect.fuzzy_loader.fuzzy_load(win, pane, function(id, _)
+               local kind = string.match(id, "^([^/]+)")
+               id = string.match(id, "([^/]+)$")
+               id = string.match(id, "(.+)%..+$")
+               local opts = {
+                  relative = true,
+                  restore_text = true,
+                  on_pane_restore = resurrect.tab_state.default_on_pane_restore,
+               }
+               if kind == "workspace" then
+                  local state = resurrect.state_manager.load_state(id, "workspace")
+                  resurrect.workspace_state.restore_workspace(state, opts)
+               elseif kind == "window" then
+                  local state = resurrect.state_manager.load_state(id, "window")
+                  resurrect.window_state.restore_window(pane:window(), state, opts)
+               elseif kind == "tab" then
+                  local state = resurrect.state_manager.load_state(id, "tab")
+                  resurrect.tab_state.restore_tab(pane:tab(), state, opts)
+               end
+            end)
+         end),
+      },
    },
 }
+
+-- Auto-save workspace state every 5 minutes so a restart can pick up where we left off.
+resurrect.state_manager.periodic_save({
+   interval_seconds = 300,
+   save_workspaces = true,
+   save_windows = true,
+   save_tabs = true,
+})
+
+-- On GUI startup, restore the latest saved state written by periodic_save.
+wezterm.on("gui-startup", resurrect.state_manager.resurrect_on_gui_startup)
 
 
 return config
