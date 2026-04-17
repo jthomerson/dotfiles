@@ -1,6 +1,6 @@
 # Installation for a New Machine
 
-Note that many of these steps were from this great writeup:
+Note that many of these steps were initially from this great writeup:
 https://dev.to/therealdanvega/new-macbook-setup-for-developers-2nma
 
 
@@ -43,15 +43,19 @@ At this point you should be set up and able to install packages using Homebrew
 as your primary user.
 
 
-## Install and Configure WezTerm
-
-Now, install [WezTerm][wezterm] using Brew.
+### Install git
 
 ```
-brew install --cask wezterm
+brew install git
 ```
 
-[wezterm]: https://wezterm.org/index.html
+Now configure it:
+
+```
+git config --global user.email "jeremy@thomersonfamily.com"
+git config --global user.name "Jeremy Thomerson"
+git config --global core.excludesfile ~/code/jthomerson/dotfiles/app-settings/git/.gitignore-global
+```
 
 
 ### Install a Nerd Font
@@ -60,10 +64,31 @@ WezTerm (and Starship) need a [Nerd Font](https://www.nerdfonts.com/) for icons 
 glyphs to render correctly.
 
 ```
-brew install --cask font-comic-shanns-mono-nerd-font
+brew install --cask font-sauce-code-pro-nerd-font
 ```
 
-Then set it as the font in `~/.config/wezterm/wezterm.lua`.
+
+### Install This Repo
+
+This repo has all the necessary dotfiles in it.
+
+```
+mkdir -p ~/code/jthomerson
+pushd ~/code/jthomerson
+git clone git@github.com:jthomerson/dotfiles.git
+```
+
+
+## Install and Configure WezTerm
+
+Now, install [WezTerm][wezterm] using Brew.
+
+```
+brew install --cask wezterm
+ln -s ~/code/jthomerson/dotfiles/app-settings/wezterm ~/.config/wezterm
+```
+
+[wezterm]: https://wezterm.org/index.html
 
 
 ### Grant WezTerm Full Disk Access
@@ -138,8 +163,7 @@ helpers, Starship prompt, syntax highlighting, and autosuggestions.
 Link the Starship config from the dotfiles repo:
 
 ```
-mkdir -p ~/.config
-ln -sf ~/code/jthomerson/dotfiles/app-settings/starship/starship.toml ~/.config/starship.toml
+ln -s ~/code/jthomerson/dotfiles/app-settings/starship ~/.config/starship
 ```
 
 **Now start a new terminal session to inherit those changes.**
@@ -163,38 +187,7 @@ rsync -a --progress OTHER_MACHINE:~/.config/gh ~/.config/
 ```
 
 
-## Install Essentials
-
-
-### Install git
-
-```
-brew install git
-```
-
-Now configure it:
-
-```
-git config --global user.email "jeremy@thomersonfamily.com"
-git config --global user.name "Jeremy Thomerson"
-git config --global core.excludesfile ~/code/jthomerson/dotfiles/app-settings/git/.gitignore-global
-```
-
-
-
-### Install This Repo
-
-This repo has all the necessary dotfiles in it.
-
-```
-mkdir -p ~/code/jthomerson
-pushd ~/code/jthomerson
-git clone git@github.com:jthomerson/dotfiles.git
-```
-
-
 ## Install Other Apps and Tools
-
 
 ### Install Miscellaneous Tools
 
@@ -210,13 +203,13 @@ brew install \
    telnet \
    ag \
    jq \
+   yq \
    colordiff \
    duckdb \
    db-browser-for-sqlite \
    dbeaver-community \
    helix \
    tree \
-   corkscrew \
    ccrypt \
    hugo \
    imagemagick \
@@ -226,7 +219,6 @@ brew install \
    yt-dlp \
    asciinema \
    graphviz \
-   reattach-to-user-namespace \
    pandoc \
    vlc \
    postman
@@ -249,16 +241,8 @@ brew install \
    coreutils \
    gnu-sed \
    grep \
-   openssl@1.1 \
    python \
    ffmpeg
-```
-
-When I was setting this up in 2025-11, I switched from `pip install yq` to
-`brew install yq`. We'll see if this was a good idea or not.
-
-```
-brew install yq
 ```
 
 
@@ -290,7 +274,6 @@ This installs to `~/.local/bin/claude`, which is already on `PATH` via `~/.zshrc
 
    * [Remember the Milk](https://www.rememberthemilk.com/services/)
    * [Keyboard Maestro](https://www.keyboardmaestro.com/main/) ([old versions](https://files.stairways.com/))
-   * [Notion](https://www.notion.com/desktop)
    * [Google Chrome](https://www.google.com/chrome/)
    * [Visual Studio Code](https://code.visualstudio.com/)
    * [Docker Desktop](https://www.docker.com/products/docker-desktop/)
@@ -351,6 +334,7 @@ users" option is selected.
 To enable SSH access to the machine, go to System Preferences > Sharing >
 Remote Login. Make sure it is enabled, and your user whitelisted if "only these
 users" option is selected.
+
 
 #### Alternate Port
 
@@ -432,43 +416,8 @@ npm install --global grunt-cli \
 ```
 
 
-### Install PDF Toolkit (pdftk)
+### Install GitHub CLI (`gh`)
 
-```
-dotfiles
-./install-setup/install-pdftk.sh
-```
-
-
-### Install GitHub CLI
-
-#### Install the Old GitHub Tool (`hub`)
-
-The [GitHub CLI tool](https://hub.github.com/) is handy to automate some tasks, and
-especially for calling the GitHub APIs from the CLI. It's used by my code-repo
-automation scripts, but eventually needs to be updated to use the newer tool
-(`gh`, below).
-
-Before logging in, you'll need to create a [personal access token][hub-pat]. Give it
-repo and workflow access. When prompted for your password, enter the token instead.
-
-[hub-pat]: https://github.com/settings/tokens
-
-```
-# make sure that ~/.config/hub was copied from another computer or generated
-# with a valid personal access token
-brew install hub
-hub api --paginate 'user/repos?affiliation=owner'
-```
-
-**NOTE:** This is the **old** `hub` tool. The newer tool is `gh`. See:
-
-   * New: https://cli.github.com/
-   * Old: https://github.com/github/hub
-   * Comparison: https://github.com/cli/cli#comparison-with-hub
-   * More detailed why: https://github.com/cli/cli/blob/trunk/docs/gh-vs-hub.md
-
-#### Install the New GitHub Tool (`gh`)
 
 ```bash
 brew install gh
