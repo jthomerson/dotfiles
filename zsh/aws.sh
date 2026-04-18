@@ -25,19 +25,17 @@ complete -F _awsume awsume
 complete -F _awsume AWS
 
 # For Granted
-# (https://docs.commonfate.io/granted/troubleshooting/#manually-configuring-your-shell-profile)
-function assume {
-   source assume $@
+# (https://docs.commonfate.io/granted/internals/shell-alias)
+# Granted's `assume` script detects the shell-integration wrapper by running
+# `type -- assume` and matching "alias" or "not found". A bare function wouldn't
+# match, so we wrap the function in an alias: `type -- assume` reports an alias,
+# Granted's supported detection path passes, and our cleanup still runs.
+unalias assume 2>/dev/null
+_assume_granted() {
+   source assume "$@"
    # Serverless (SLS) fails when AWS_PROFILE is set, so we unset it here
    unset AWS_PROFILE
 }
+alias assume=_assume_granted
 
 alias grantedClear='granted sso-tokens clear'
-
-function assumeRemote {
-   cp ~/.granted/config ~/.granted/config.bak
-   sed -i 's/CustomSSOBrowserPath.*/CustomSSOBrowserPath = "THIS_BROWSER_DOES_NOT_EXIST"/' ~/.granted/config
-   source assume $@
-   unset AWS_PROFILE
-   mv ~/.granted/config.bak ~/.granted/config
-}
