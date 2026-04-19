@@ -22,7 +22,7 @@ updateGitHubRepos() {
    DIR="${1}"
    QUERY="${2}"
 
-   [[ "${QUERY}" =~ orgs/([^/]+)/* ]] && ORG_NAME="${match[1]}"
+   [[ "${QUERY}" =~ (orgs|users)/([^/]+)/* ]] && ORG_NAME="${match[2]}"
 
    mkdir -p "${DIR}"
    silentPushd "${DIR}"
