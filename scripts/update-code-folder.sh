@@ -1,5 +1,6 @@
-SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source "${SCRIPTDIR}/../bash/utilities.sh"
+#!/bin/zsh
+SCRIPTDIR="${0:A:h}"
+source "${SCRIPTDIR}/../zsh/utilities.sh"
 
 CONFIG_FILE="${HOME}/code/.code.json"
 if [ ! -z "${1}" ]; then
@@ -7,25 +8,25 @@ if [ ! -z "${1}" ]; then
 fi
 
 requireProgram "jq" # JSON parsing tool
-requireProgram "hub" # GitHub CLI tool
+requireProgram "gh" # GitHub CLI tool
 
 echo "Using config: ${CONFIG_FILE}"
 
 getConfigValue() {
    DIR_KEY="${1}"
    CONFIG_KEY="${2}"
-   cat "${CONFIG_FILE}" | jq -r '.["'"${KEY}"'"] | .["'"${CONFIG_KEY}"'"]'
+   cat "${CONFIG_FILE}" | jq -r '.["'"${DIR_KEY}"'"] | .["'"${CONFIG_KEY}"'"]'
 }
 
 updateGitHubRepos() {
    DIR="${1}"
    QUERY="${2}"
 
-   [[ "${QUERY}" =~ orgs/([^/]+)/* ]] && ORG_NAME="${BASH_REMATCH[1]}"
+   [[ "${QUERY}" =~ orgs/([^/]+)/* ]] && ORG_NAME="${match[1]}"
 
    mkdir -p "${DIR}"
    silentPushd "${DIR}"
-   for REPO_NAME in $(hub api --paginate "${QUERY}" | jq -r '.[] | ((.fork | tostring) + " " + .name)' | grep '^false' | sed 's|^false ||'); do
+   for REPO_NAME in $(gh api --paginate "${QUERY}" | jq -r '.[] | ((.fork | tostring) + " " + .name)' | grep '^false' | sed 's|^false ||'); do
       updateGitHubRepo "${REPO_NAME}" "${ORG_NAME}"
    done
    silentPopd
@@ -41,9 +42,9 @@ updateGitHubRepo() {
    else
       echo "${REPO_NAME} does not exist - cloning"
       if [ "${ORG_NAME}" != "" ]; then
-         hub clone "${ORG_NAME}/${REPO_NAME}"
+         gh repo clone "${ORG_NAME}/${REPO_NAME}"
       else
-         hub clone "${REPO_NAME}"
+         gh repo clone "${REPO_NAME}"
       fi
    fi
 }
@@ -58,12 +59,12 @@ updateGitLabRepos() {
    mkdir -p "${DIR}"
    silentPushd "${DIR}"
 
-   if [[ "${QUERY}" =~ \? ]]; then
+   if [[ "${QUERY}" == *'?'* ]]; then
       PAGINATION='&per_page=100'
    else
       PAGINATION='?per_page=100'
    fi
-   if [[ "${FORK_QUERY}" =~ \? ]]; then
+   if [[ "${FORK_QUERY}" == *'?'* ]]; then
       FORK_PAGINATION='&per_page=100'
    else
       FORK_PAGINATION='?per_page=100'
@@ -85,12 +86,12 @@ updateGitLabRepos() {
          FORK_LIST_URL="${BASE_URL}/${FORK_QUERY}${FORK_PAGINATION}"
          if [ "${FORK_QUERY}" != "null" ]; then
             FORK_ID=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${FORK_LIST_URL}" | jq -r ". | map(select(.forked_from_project.id == ${PROJECT_ID}))[].id")
-            if [ "${FORK_ID}" == "" ]; then
+            if [ "${FORK_ID}" = "" ]; then
                echo "WARNING: No fork found! Using ${CANONICAL_CLONE_URL} only"
                git clone "${CANONICAL_CLONE_URL}" "${REPO_DIR_PATH}"
             else
                FORK_URL=$(curl --insecure -s -H "PRIVATE-TOKEN: ${API_KEY}" "${BASE_URL}/projects/${FORK_ID}" | jq -r '.ssh_url_to_repo')
-               if [ "${FORK_URL}" == "" ]; then
+               if [ "${FORK_URL}" = "" ]; then
                   echo "Found a fork, but URL for fork not found!"
                   exit 1
                fi
@@ -168,16 +169,16 @@ processConfigFile() {
       DIR=$(expandPath $(getConfigValue "${KEY}" "dir"))
 
       echo "Processing code folder ${KEY} (${TYPE}) into ${DIR}"
-      if [ "${TYPE}" == "github" ]; then
+      if [ "${TYPE}" = "github" ]; then
          QUERY=$(getConfigValue "${KEY}" "query")
          updateGitHubRepos "${DIR}" "${QUERY}"
-      elif [ "${TYPE}" == "gitlab" ]; then
+      elif [ "${TYPE}" = "gitlab" ]; then
          BASE_URL=$(getConfigValue "${KEY}" "baseURL")
          API_KEY=$(cat $(expandPath $(getConfigValue "${KEY}" "credentials")))
          QUERY=$(getConfigValue "${KEY}" "query")
          FORK_QUERY=$(getConfigValue "${KEY}" "featureBranchForkQuery")
          updateGitLabRepos "${DIR}" "${BASE_URL}" "${API_KEY}" "${QUERY}" "${FORK_QUERY}"
-      elif [ "${TYPE}" == "ado" ]; then
+      elif [ "${TYPE}" = "ado" ]; then
          ORG=$(getConfigValue "${KEY}" "organization")
          PROJECT=$(getConfigValue "${KEY}" "project")
          PAT=$(cat $(expandPath $(getConfigValue "${KEY}" "credentials")))

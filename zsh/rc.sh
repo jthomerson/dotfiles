@@ -1,4 +1,4 @@
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+SCRIPT_DIR="$( cd "$( dirname "${(%):-%x}" )" >/dev/null 2>&1 && pwd )"
 
 # Environment
 export EDITOR=vim
@@ -11,7 +11,7 @@ export LESS="-RinSFX"
 source "${SCRIPT_DIR}/path.sh"
 
 # cd into a directory by name
-shopt -s autocd
+setopt autocd
 
 # shortcuts for jumping "up"
 alias 6up="cd ../../../../../.."
@@ -59,26 +59,45 @@ alias npmGlobalList="npm -g list | grep '^\(├─┬\|└─┬\)'"
 # Directory-based aliases
 alias dotfiles='pushd ~/code/jthomerson/dotfiles'
 
+# Initialize completion system before sourcing files that register completions
+autoload -Uz compinit && compinit
+# bashcompinit allows bash-style `complete -F` and `compgen` (used in aws.sh)
+autoload -U +X bashcompinit && bashcompinit
+
+# Word-motion boundaries: treat /, ., -, etc. as separators so Opt+Arrow /
+# Opt+Backspace operate on path segments instead of whole arguments.
+autoload -U select-word-style
+select-word-style bash
+
 # External helpers
 source "${SCRIPT_DIR}/utilities.sh"
 source "${SCRIPT_DIR}/git.sh"
 source "${SCRIPT_DIR}/aws.sh"
 source "${SCRIPT_DIR}/serverless.sh"
 
-# Bash history settings
-# (https://twitter.com/gumnos/status/1117146713289121797?s=11)
-export HISTCONTROL=ignorespace:erasedups
-export HISTIGNORE=ls:cd:pwd:
+# History settings
 export HISTSIZE=10000
-export HISTFILESIZE=20000
+export SAVEHIST=20000
+HISTORY_IGNORE="(ls|cd|pwd)"
+setopt hist_ignore_space   # don't save commands that start with a space (like HISTCONTROL=ignorespace)
+setopt hist_save_no_dups   # don't write duplicate entries to the history file (like erasedups)
+setopt share_history       # share history across sessions; implies append_history (like histappend)
 
-# append to the history file, don't overwrite it
-shopt -s histappend
-
-# Auto-completion for Grunt
-# https://github.com/gruntjs/grunt-cli#shell-tab-auto-completion
+# Auto-completion for Grunt (uses bash completion via bashcompinit loaded above)
 if [ -e "$(command -v grunt)" ]; then
    eval "$(grunt --completion=bash)"
 fi
 
-source "${SCRIPT_DIR}/prompt.sh"
+# Prompt (Starship)
+eval "$(starship init zsh)"
+
+# Autosuggestions
+[[ -f "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] && \
+   source "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+
+# Syntax highlighting — must be sourced last
+if [[ -f "$(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
+   source "$(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+   ZSH_HIGHLIGHT_STYLES[path]=none
+   ZSH_HIGHLIGHT_STYLES[path_prefix]=none
+fi

@@ -67,7 +67,7 @@ expandPath() {
    # From https://stackoverflow.com/a/29310477
    local path
    local -a pathElements resultPathElements
-   IFS=':' read -r -a pathElements <<<"$1"
+   IFS=':' read -r -A pathElements <<< "$1"   # zsh uses -A instead of bash's -a for arrays
    : "${pathElements[@]}"
    for path in "${pathElements[@]}"; do
       : "$path"
@@ -95,7 +95,7 @@ expandPath() {
       resultPathElements+=( "$path" )
    done
    local result
-   printf -v result '%s:' "${resultPathElements[@]}"
+   result=$(printf '%s:' "${resultPathElements[@]}")   # zsh lacks bash's printf -v
    printf '%s\n' "${result%:}"
 }
 
