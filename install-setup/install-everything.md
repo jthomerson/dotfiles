@@ -106,6 +106,66 @@ ln -sf ~/code/jthomerson/dotfiles/app-settings/wezterm/wezterm.lua ~/.config/wez
 ```
 
 
+### Optional: Per-Machine WezTerm Overrides
+
+`wezterm.lua` loads a per-machine `local.lua` for settings that shouldn't be shared
+across computers — typically `ssh_domains` (to connect to a remote WezTerm mux) and
+`unix_domains` (to host one). `local.lua` is gitignored in this repo, so each machine
+gets its own copy.
+
+Only create this file if you need one of the scenarios below. If the file is absent,
+the shared config falls back to empty defaults.
+
+The file lives at `~/.config/wezterm/local.lua` (which resolves into the gitignored
+`app-settings/wezterm/local.lua` via the symlink above).
+
+#### Connect to a Remote WezTerm Mux
+
+Use this on a machine that should attach to a multiplexer running on another host.
+Requires SSH access to that host (see "Configure SSH" below).
+
+```lua
+-- ~/.config/wezterm/local.lua
+return {
+   ssh_domains = {
+      {
+         name = 'remote-main',
+         remote_address = '100.125.108.72',
+         username = 'jthomerson',
+         multiplexing = 'WezTerm',
+         remote_wezterm_path = '/opt/homebrew/bin/wezterm',
+      },
+   },
+}
+```
+
+Then connect with: `wezterm connect remote-main`.
+
+`remote_wezterm_path` is important: WezTerm's SSH client runs commands via a
+non-interactive shell on the remote, which does not source `~/.zshrc`, so
+Homebrew's `bin` directory is not on `PATH` and `wezterm` will not be found.
+Setting an absolute path sidesteps the PATH issue entirely. Adjust the path if
+the remote installs WezTerm somewhere other than `/opt/homebrew/bin` (Intel
+Macs use `/usr/local/bin`; Linux may use `/usr/bin`).
+
+#### Host a WezTerm Mux
+
+Use this on a machine that should serve a multiplexer for other machines to attach to.
+
+```lua
+-- ~/.config/wezterm/local.lua
+return {
+   unix_domains = { { name = 'main' } },
+}
+```
+
+Then start the mux server (it runs headless and survives SSH disconnects):
+
+```bash
+wezterm-mux-server --daemonize
+```
+
+
 ## Install Rectangle
 
 [Rectangle app](https://github.com/rxhanson/Rectangle) is the replacement for

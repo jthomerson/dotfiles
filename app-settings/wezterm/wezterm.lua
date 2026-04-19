@@ -3,6 +3,13 @@ local wezterm = require("wezterm")
 local act = wezterm.action
 local resurrect = wezterm.plugin.require("https://github.com/MLFlexer/resurrect.wezterm")
 
+-- Per-machine overrides (ssh_domains, unix_domains, etc.) live in local.lua,
+-- which is gitignored so each computer can have its own.
+local ok, local_config = pcall(require, "local")
+if not ok then
+   local_config = {}
+end
+
 config = wezterm.config_builder()
 
 config = {
@@ -19,6 +26,9 @@ config = {
       saturation = 0.5,
       brightness = 0.4,
    },
+
+   ssh_domains = local_config.ssh_domains or {},
+   unix_domains = local_config.unix_domains or {},
 
    keys = {
       -- iTerm2-style pane splitting
