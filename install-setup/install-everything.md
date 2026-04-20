@@ -306,6 +306,50 @@ brew install \
 ```
 
 
+### Configure Helix
+
+Link the Helix config from the dotfiles repo:
+
+```
+ln -sfn ~/code/jthomerson/dotfiles/app-settings/helix ~/.config/helix
+```
+
+Install Language Servers so Helix can provide IDE features. We install these
+via Homebrew rather than `npm install -g` so they live outside any Node
+version's global package space — otherwise they would disappear every time
+`nvm use` switched to a project with a different `.nvmrc`.
+
+```
+brew install \
+   typescript-language-server \
+   rust-analyzer \
+   marksman \
+   yaml-language-server \
+   bash-language-server
+```
+
+`vscode-json-language-server` ships with VS Code's language services package:
+
+```
+npm install -g vscode-langservers-extracted
+```
+
+> Note: this one is installed via `npm -g` because Homebrew does not package
+> it. It is tied to whichever Node version was active when you ran the
+> command, so if you switch Node versions you may need to re-install it (or
+> add `vscode-langservers-extracted` to `~/.nvm/default-packages`).
+
+Verify Helix sees each LSP:
+
+```
+hx --health typescript
+hx --health rust
+```
+
+If any show "Not found" for their language server, confirm the binary is
+on your `PATH` in the same shell where you launch Helix.
+
+
 ### Install `uv` for Python / MCP Servers
 
 Get current command from [Astral](https://docs.astral.sh/uv/getting-started/).

@@ -1,0 +1,113 @@
+[language-server.vscode-json-language-server]
+command = "vscode-json-language-server"
+args = ["--stdio"]
+
+[language-server.typescript-language-server]
+config = { hostInfo = "helix", preferences = { includePackageJsonAutoImports = "off" } }
+
+[[language]]
+name = "git-commit"
+scope = "git.commitmsg"
+roots = []
+file-types = [{ glob = "COMMIT_EDITMSG"}]
+comment-token = "#"
+indent = { tab-width = 3, unit = " " }
+rulers = [72, 90]
+
+[[language]]
+name = "markdown"
+scope = "source.md"
+injection-regex = "md|markdown"
+file-types = ["md", "markdown", "PULLREQ_EDITMSG", "mkd", "mdwn", "mdown", "markdn", "mdtxt", "mdtext", "workbook"]
+roots = [".marksman.toml"]
+language-servers = [ "marksman" ]
+formatter = { command = "dprint", args = ["fmt", "--stdin", "md"] }
+indent = { tab-width = 3, unit = "   " }
+
+[[language]]
+name = "typescript"
+scope = "source.ts"
+injection-regex = "(ts|typescript)"
+file-types = ["ts", "mts", "cts"]
+language-id = "typescript"
+shebangs = ["deno", "ts-node"]
+language-servers = [ "typescript-language-server" ]
+indent = { tab-width = 3, unit = "   " }
+
+[[language]]
+name = "javascript"
+scope = "source.js"
+injection-regex = "(js|javascript)"
+language-id = "javascript"
+file-types = ["js", "mjs", "cjs", "rules", "es6", "pac", "jakefile"]
+shebangs = ["node"]
+comment-token = "//"
+language-servers = [ "typescript-language-server" ]
+indent = { tab-width = 3, unit = "   " }
+
+[[language]]
+name = "yaml"
+scope = "source.yaml"
+file-types = ["yml", "yaml"]
+comment-token = "#"
+indent = { tab-width = 3, unit = "   " }
+language-servers = [ "yaml-language-server", "ansible-language-server" ]
+injection-regex = "yml|yaml"
+
+[[language]]
+name = "bash"
+scope = "source.bash"
+injection-regex = "(shell|bash|zsh|sh)"
+file-types = [
+   "sh",
+   "bash",
+   "zsh",
+   ".bash_login",
+   ".bash_logout",
+   ".bash_profile",
+   ".bashrc",
+   ".profile",
+   ".zshenv",
+   "zshenv",
+   ".zlogin",
+   "zlogin",
+   ".zlogout",
+   "zlogout",
+   ".zprofile",
+   "zprofile",
+   ".zshrc",
+   "zshrc",
+   ".zimrc",
+   "APKBUILD",
+   "PKGBUILD",
+   "eclass",
+   "ebuild",
+   "bazelrc",
+   ".bash_aliases",
+   "Renviron",
+   ".Renviron",
+   ".xprofile",
+   ".xsession",
+   ".xsessionrc",
+   "zsh-theme",
+   "ksh",
+   "cshrc",
+   "tcshrc",
+   ".yashrc",
+   ".yash_profile",
+   ".hushlogin",
+   "bashrc_Apple_Terminal",
+   "zshrc_Apple_Terminal",
+]
+shebangs = ["sh", "bash", "dash", "zsh"]
+comment-token = "#"
+language-servers = [ "bash-language-server" ]
+indent = { tab-width = 3, unit = "   " }
+
+[[language]]
+name = "json"
+language-servers = [ "vscode-json-language-server" ]
+
+[[language]]
+name = "rust"
+language-servers = [ "rust-analyzer" ]

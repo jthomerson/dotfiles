@@ -1,0 +1,29 @@
+theme = "ao"
+
+[editor]
+rulers = [90, 140]
+bufferline = "always"
+text-width = 90
+auto-format = false
+insert-final-newline = true
+
+[editor.file-picker]
+git-ignore = false
+
+[editor.cursor-shape]
+normal = "block"
+insert = "bar"
+select = "underline"
+
+[editor.whitespace.render]
+space = "all"
+tab = "all"
+newline = "none"
+
+[keys.normal]
+X = "extend_line_above"
+esc = ["collapse_selection", "keep_primary_selection"]
+
+[editor.statusline]
+left = ["mode", "spacer", "diagnostics", "workspace-diagnostics", "spacer", "file-name", "spacer", "spinner"]
+right = ["version-control", "spacer", "position", "spacer"]
