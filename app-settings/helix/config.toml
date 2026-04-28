@@ -8,7 +8,7 @@ auto-format = false
 insert-final-newline = true
 
 [editor.file-picker]
-git-ignore = false
+git-ignore = true
 
 [editor.cursor-shape]
 normal = "block"
