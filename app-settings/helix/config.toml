@@ -23,6 +23,8 @@ newline = "none"
 [keys.normal]
 X = "extend_line_above"
 esc = ["collapse_selection", "keep_primary_selection"]
+# Reflow single-line comments; https://github.com/helix-editor/helix/issues/3332#issuecomment-3393349350
+A-r = "@o<esc>kxx:reflow<ret>"
 
 [editor.statusline]
 left = ["mode", "spacer", "diagnostics", "workspace-diagnostics", "spacer", "file-name", "spacer", "spinner"]
