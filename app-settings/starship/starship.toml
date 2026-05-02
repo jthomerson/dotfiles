@@ -113,7 +113,7 @@ number_threshold = 1
 format = '[$symbol]($style)'
 
 [cmd_duration]
-min_time = 500
+min_time = 950
 style = 'fg:gray'
 format = '[$duration]($style)'
 
