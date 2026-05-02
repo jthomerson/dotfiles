@@ -23,9 +23,9 @@ add_newline = true
 palette = "nord"
 
 [directory]
-style = 'bold fg:dark_blue'
+style = 'bold cyan'
 format = '[$path ]($style)'
-truncation_length = 3
+truncation_length = 2
 truncation_symbol = '…/'
 truncate_to_repo = false
 
@@ -36,12 +36,12 @@ truncate_to_repo = false
 'Pictures' = ' '
 
 [git_branch]
-style = 'fg:green'
+style = 'bold purple'
 symbol = ' '
 format = '[on](white) [$symbol$branch ]($style)'
 
 [git_status]
-style = 'fg:red'
+style = 'bold red'
 format = '([$all_status$ahead_behind]($style) )'
 
 [fill]
