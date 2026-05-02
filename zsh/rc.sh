@@ -89,6 +89,7 @@ if [ -e "$(command -v grunt)" ]; then
 fi
 
 # Prompt (Starship)
+export STARSHIP_CONFIG="$HOME/.config/starship/starship.toml"
 eval "$(starship init zsh)"
 
 # Autosuggestions
