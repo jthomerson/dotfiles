@@ -10,7 +10,9 @@ $golang\
 $haskell\
 $rust\
 $ruby\
-$aws\
+${custom.env_group_prd}\
+${custom.env_group_devlab}\
+${custom.env_group_other}\
 $docker_context\
 $jobs\
 $cmd_duration\
@@ -79,10 +81,23 @@ symbol = ' '
 [package]
 symbol = '󰏗 '
 
-[aws]
-symbol = ' '
-style = 'yellow'
-format = '[$symbol($profile )(\[$duration\] )]($style)'
+[custom.env_group_prd]
+when = '[ -n "$ENV_GROUP" ] && echo "$ENV_GROUP" | grep -q "prd"'
+command = 'echo "‼️ $ENV_GROUP ‼️"'
+style = 'bold fg:bright-red'
+format = '[$output]($style) '
+
+[custom.env_group_devlab]
+when = '[ -n "$ENV_GROUP" ] && echo "$ENV_GROUP" | grep -qE "dev|lab"'
+command = 'echo "$ENV_GROUP"'
+style = 'bold fg:#b9ca4a'
+format = '[$output]($style) '
+
+[custom.env_group_other]
+when = '[ -n "$ENV_GROUP" ] && ! echo "$ENV_GROUP" | grep -q "prd" && ! echo "$ENV_GROUP" | grep -qE "dev|lab"'
+command = 'echo "$ENV_GROUP"'
+style = 'bold fg:#e7c547'
+format = '[$output]($style) '
 
 [docker_context]
 symbol = ' '
