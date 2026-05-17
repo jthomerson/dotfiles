@@ -39,3 +39,49 @@ _assume_granted() {
 alias assume=_assume_granted
 
 alias grantedClear='granted sso-tokens clear'
+
+# Find CloudFront distribution by alias domain, invalidate path(s), wait for completion.
+# Usage: invalidate-cloudfront <domain> <path> [<path> ...]
+invalidate-cloudfront() {
+  if (( $# < 2 )); then
+    echo "Usage: invalidate-cloudfront <domain> <path> [<path> ...]" >&2
+    echo "Example: invalidate-cloudfront jeremythomerson.com '/tmp/*'" >&2
+    return 1
+  fi
+
+  local domain="$1"; shift
+  local paths=("$@")
+
+  echo "==> Looking up distribution with alias '$domain'..."
+  local dist_id
+  dist_id=$(aws cloudfront list-distributions \
+    --query "DistributionList.Items[?Aliases.Items != null && contains(Aliases.Items, '$domain')].Id | [0]" \
+    --output text 2>/dev/null)
+
+  if [[ -z "$dist_id" || "$dist_id" == "None" ]]; then
+    echo "Error: no distribution found with alias '$domain'" >&2
+    return 1
+  fi
+  echo "    distribution: $dist_id"
+
+  echo "==> Creating invalidation for: ${paths[*]}"
+  local inv_id
+  inv_id=$(aws cloudfront create-invalidation \
+    --distribution-id "$dist_id" \
+    --paths "${paths[@]}" \
+    --query 'Invalidation.Id' \
+    --output text)
+
+  if [[ -z "$inv_id" || "$inv_id" == "None" ]]; then
+    echo "Error: failed to create invalidation" >&2
+    return 1
+  fi
+  echo "    invalidation: $inv_id"
+
+  echo "==> Waiting for completion (typically 1-5 min)..."
+  aws cloudfront wait invalidation-completed \
+    --distribution-id "$dist_id" \
+    --id "$inv_id"
+
+  echo "==> Done: $inv_id complete"
+}
