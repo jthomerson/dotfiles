@@ -273,6 +273,7 @@ brew install \
    ccrypt \
    hugo \
    imagemagick \
+   ghostscript \
    ohcount \
    tmux \
    thrift \
