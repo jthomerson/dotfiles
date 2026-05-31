@@ -7,6 +7,9 @@ export LSCOLORS=ExFxCxDxBxegedabagacad
 export MAVEN_OPTS=-Xmx512m
 export PAGER=less
 export LESS="-RinSFX"
+# jq 1.8's default null color (0;90) renders invisibly on this terminal theme;
+# override only the first field (null) and let jq use defaults for everything else
+export JQ_COLORS="0;33"
 
 source "${SCRIPT_DIR}/path.sh"
 
