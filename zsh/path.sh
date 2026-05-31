@@ -198,5 +198,8 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 if [ -d "$ANDROID_HOME/ndk" ]; then
    export NDK_HOME="$ANDROID_HOME/ndk/$(ls -1 "$ANDROID_HOME/ndk" | tail -1)"
 fi
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
 export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+export PATH="$ANDROID_HOME/emulator:$PATH"
+export PATH="$JAVA_HOME/bin:$PATH"
