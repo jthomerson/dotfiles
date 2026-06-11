@@ -350,6 +350,51 @@ hx --health rust
 If any show "Not found" for their language server, confirm the binary is
 on your `PATH` in the same shell where you launch Helix.
 
+#### Vue support (`.vue` files)
+
+Vue Language Tools has no Homebrew formula, and installing it via `npm -g` would
+tie it to one Node version's global space (and break on `nvm use`). Instead we
+install it into a fixed, nvm-independent prefix that `languages.toml` references
+by absolute path. `/opt/homebrew` is a constant on Apple Silicon, so the same
+paths work on every machine.
+
+```sh
+mkdir -p /opt/homebrew/lib/hx-lsp
+cat > /opt/homebrew/lib/hx-lsp/package.json <<'JSON'
+{
+   "name": "hx-lsp-tools",
+   "private": true,
+   "dependencies": {
+      "@vue/language-server": "3.2.9",
+      "@vue/typescript-plugin": "3.2.9",
+      "typescript": "5.9.3"
+   },
+   "overrides": {
+      "@vue/shared": "3.5.35"
+   }
+}
+JSON
+npm install --prefix /opt/homebrew/lib/hx-lsp --save-exact
+```
+
+> The `@vue/shared` override pins around a yanked `3.5.36` that `@vue/language-core`
+> requests; drop it if a future `@vue/*` release resolves cleanly.
+
+Helix runs these in "hybrid mode": `vue-language-server` handles Vue-specific
+features while `typescript-language-server` loads `@vue/typescript-plugin` to
+supply goto-definition, hover, and `@/*` tsconfig path aliases for `.vue` files.
+Because the prefix is fixed, no symlink or per-Node reinstall is needed; rebuild
+it only to change a pinned version.
+
+Verify Vue is wired up (both servers should show a checkmark):
+
+```sh
+hx --health vue
+```
+
+The first goto-definition in a freshly opened project is slow (tens of seconds)
+while `tsserver` loads the whole project; subsequent jumps are instant.
+
 
 ### Install `uv` for Python / MCP Servers
 

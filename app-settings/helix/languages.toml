@@ -3,7 +3,30 @@ command = "vscode-json-language-server"
 args = ["--stdio"]
 
 [language-server.typescript-language-server]
-config = { hostInfo = "helix", preferences = { includePackageJsonAutoImports = "off" } }
+config.hostInfo = "helix"
+config.preferences = { includePackageJsonAutoImports = "off" }
+# Loading @vue/typescript-plugin lets this server (the same engine VS Code
+# uses) resolve and navigate .vue files, which is what supplies goto-definition
+# and tsconfig "paths" aliases (e.g. @/*) for Vue files in hybrid mode below.
+# The Vue tooling lives in a fixed prefix (see install-everything.md) that is
+# independent of nvm, so this absolute path is stable across `nvm use` switches,
+# Node upgrades, and machines (all Apple Silicon, so /opt/homebrew is constant).
+config.plugins = [
+   { name = "@vue/typescript-plugin", location = "/opt/homebrew/lib/hx-lsp/node_modules/@vue/typescript-plugin", languages = ["vue"] },
+]
+
+# Hybrid mode (the supported setup for Vue Language Tools 2.x+): vue-language-server
+# handles Vue-specific features while the TypeScript server above handles TS
+# semantics for .vue files. This avoids Volar's bundled TS choking on this
+# project's solution-style root tsconfig.json (files: [] + project references),
+# which left non-hybrid mode hanging on definition requests.
+# command is an absolute path into the fixed prefix (not a bare PATH lookup) so
+# the server is found regardless of which Node version nvm has active.
+[language-server.vue-language-server]
+command = "/opt/homebrew/lib/hx-lsp/node_modules/.bin/vue-language-server"
+args = ["--stdio"]
+config.typescript.tsdk = "/opt/homebrew/lib/hx-lsp/node_modules/typescript/lib"
+config.vue.hybridMode = true
 
 [[language]]
 name = "git-commit"
@@ -32,6 +55,23 @@ file-types = ["ts", "mts", "cts"]
 language-id = "typescript"
 shebangs = ["deno", "ts-node"]
 language-servers = [ "typescript-language-server" ]
+indent = { tab-width = 3, unit = "   " }
+
+[[language]]
+name = "vue"
+scope = "source.vue"
+injection-regex = "vue"
+file-types = ["vue"]
+roots = ["package.json", "vite.config.ts", "tsconfig.json"]
+# In hybrid mode the TypeScript server owns goto/references/hover and answers
+# them quickly. vue-language-server does not implement these (it delegates TS to
+# the TypeScript server), so if it is queried it never replies and Helix blocks
+# on its 20s request timeout before navigating. Excluding those features here
+# means only the TypeScript server is queried, so goto is instant.
+language-servers = [
+   { name = "typescript-language-server", except-features = [ "format" ] },
+   { name = "vue-language-server", except-features = [ "goto-definition", "goto-type-definition", "goto-implementation", "goto-declaration", "goto-reference", "hover" ] },
+]
 indent = { tab-width = 3, unit = "   " }
 
 [[language]]
