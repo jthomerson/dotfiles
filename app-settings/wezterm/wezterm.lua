@@ -82,7 +82,9 @@ config = {
       {
          key = "s", mods = "CMD|SHIFT",
          action = wezterm.action_callback(function(_, _)
-            resurrect.state_manager.save_state(resurrect.workspace_state.get_workspace_state())
+            local state = resurrect.workspace_state.get_workspace_state()
+            local name = state.workspace .. "-" .. wezterm.strftime("%Y-%m-%d-%H.%M.%S")
+            resurrect.state_manager.save_state(state, name)
          end),
       },
       -- Cmd+Shift+O: open a saved state via fuzzy finder (resurrect.wezterm)
