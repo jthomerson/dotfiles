@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# Reflow stdin through `par`, choosing a quote-prefix set appropriate to the
+# language so wrapped lines keep the correct per-line prefix. `par` repeats
+# whatever it treats as the "quote prefix" on every wrapped line, so the set
+# must differ by language:
+#
+#   * markdown: only blockquotes (>) are prefixes. `*`, `#`, and `/` are
+#     bullets, headings, and emphasis here, so repeating them on a wrapped
+#     line would corrupt the document (a wrapped bullet would become two
+#     bullets, a wrapped heading two headings).
+#   * everything else: treat comment lead-chars (/, #, *) as prefixes so a
+#     single-line //, #, or jsdoc-style * comment keeps its token when wrapped
+#     (otherwise the continuation becomes uncommented code).
+#
+# Usage: reflow <width> <language>
+
+set -euo pipefail
+
+WIDTH="$1"
+LANGUAGE="$2"
+
+QUOTE_CHARS='_s>|/#*'
+
+if [ "${LANGUAGE}" = "markdown" ]; then
+   QUOTE_CHARS='_s>'
+fi
+
+par "w${WIDTH}rTbgq" "Q=${QUOTE_CHARS}"
