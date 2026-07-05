@@ -28,6 +28,41 @@ args = ["--stdio"]
 config.typescript.tsdk = "/opt/homebrew/lib/hx-lsp/node_modules/typescript/lib"
 config.vue.hybridMode = true
 
+# ESLint diagnostics. The server binary ships with vscode-langservers-extracted
+# (installed via npm -g; see install-everything.md, same nvm caveat as the JSON
+# server). It runs each project's own eslint install, so it honors that repo's
+# config and rules. Attached to JS/TS/Vue below with only-features so it adds
+# diagnostics and quick-fixes only, never competing with the TypeScript server
+# for goto/hover/completion.
+[language-server.eslint]
+command = "vscode-eslint-language-server"
+args = ["--stdio"]
+
+[language-server.eslint.config]
+validate = "on"
+format = false
+# In a monorepo, resolve each package's own eslint config, not just the root.
+workingDirectory = { mode = "auto" }
+
+# efm-langserver bridges external linters into LSP diagnostics. Here it runs
+# markdownlint on markdown buffers via the `markdownlint-file` wrapper, which
+# uses each project's own markdownlint-cli2 and config so the diagnostics match
+# that repo's `npm run markdownlint` (a global markdownlint would use a
+# different version and different rules). It lints the file on disk rather than
+# stdin (so results refresh on save), and exits non-zero when it finds
+# problems, so lintIgnoreExitCode keeps efm from discarding the output.
+# Attached to markdown below with only-features = diagnostics so marksman keeps
+# handling everything else.
+[language-server.efm]
+command = "efm-langserver"
+
+[[language-server.efm.config.languages.markdown]]
+lintCommand = "~/.config/helix/markdownlint-file ${INPUT}"
+lintStdin = false
+lintIgnoreExitCode = true
+lintFormats = ["%f:%l:%c %m", "%f:%l %m"]
+lintSource = "markdownlint-cli2"
+
 [[language]]
 name = "git-commit"
 scope = "git.commitmsg"
@@ -43,7 +78,7 @@ scope = "source.md"
 injection-regex = "md|markdown"
 file-types = ["md", "markdown", "PULLREQ_EDITMSG", "mkd", "mdwn", "mdown", "markdn", "mdtxt", "mdtext", "workbook"]
 roots = [".marksman.toml"]
-language-servers = [ "marksman" ]
+language-servers = [ "marksman", { name = "efm", only-features = [ "diagnostics" ] } ]
 formatter = { command = "dprint", args = ["fmt", "--stdin", "md"] }
 indent = { tab-width = 3, unit = "   " }
 
@@ -54,7 +89,10 @@ injection-regex = "(ts|typescript)"
 file-types = ["ts", "mts", "cts"]
 language-id = "typescript"
 shebangs = ["deno", "ts-node"]
-language-servers = [ "typescript-language-server" ]
+language-servers = [
+   "typescript-language-server",
+   { name = "eslint", only-features = [ "diagnostics", "code-action" ] },
+]
 indent = { tab-width = 3, unit = "   " }
 
 [[language]]
@@ -71,6 +109,7 @@ roots = ["package.json", "vite.config.ts", "tsconfig.json"]
 language-servers = [
    { name = "typescript-language-server", except-features = [ "format" ] },
    { name = "vue-language-server", except-features = [ "goto-definition", "goto-type-definition", "goto-implementation", "goto-declaration", "goto-reference", "hover" ] },
+   { name = "eslint", only-features = [ "diagnostics", "code-action" ] },
 ]
 indent = { tab-width = 3, unit = "   " }
 
@@ -82,7 +121,10 @@ language-id = "javascript"
 file-types = ["js", "mjs", "cjs", "rules", "es6", "pac", "jakefile"]
 shebangs = ["node"]
 comment-token = "//"
-language-servers = [ "typescript-language-server" ]
+language-servers = [
+   "typescript-language-server",
+   { name = "eslint", only-features = [ "diagnostics", "code-action" ] },
+]
 indent = { tab-width = 3, unit = "   " }
 
 [[language]]

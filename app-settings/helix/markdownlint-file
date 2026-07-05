@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# Lint a single Markdown file for Helix diagnostics (via efm-langserver) so the
+# results match the project's own `npm run markdownlint`. Two subtleties this
+# handles:
+#
+#   1. The @silvermine shared config ships custom markdownlint rules pinned to
+#      the markdownlint version in the project's node_modules. A globally
+#      installed markdownlint-cli2 is a different version, so those custom rules
+#      throw and built-in rules differ. We therefore prefer the project-local
+#      node_modules/.bin/markdownlint-cli2 and only fall back to a global one.
+#
+#   2. markdownlint-cli2 combines the file argument with the config's `globs`
+#      (e.g. **/*.md), which would lint the whole repo and report other files'
+#      errors against this buffer. Those globs resolve relative to the working
+#      directory, so we run from a fresh empty directory where they match
+#      nothing; the explicit absolute path is still linted and the config is
+#      auto-discovered by walking up from the file. cli2 then prints paths
+#      relative to that empty directory, so we rewrite them back to the absolute
+#      path efm expects.
+#
+# Usage: markdownlint-file <file-path>
+
+set -euo pipefail
+
+FILE="$1"
+
+if [ "${FILE#/}" = "${FILE}" ]; then
+   FILE="$(pwd)/${FILE}"
+fi
+
+find_local_cli2() {
+   local dir
+   dir="$(dirname "$1")"
+
+   while [ "${dir}" != "/" ]; do
+      if [ -x "${dir}/node_modules/.bin/markdownlint-cli2" ]; then
+         printf '%s\n' "${dir}/node_modules/.bin/markdownlint-cli2"
+         return 0
+      fi
+      dir="$(dirname "${dir}")"
+   done
+
+   return 1
+}
+
+CLI2="$(find_local_cli2 "${FILE}" || command -v markdownlint-cli2 || true)"
+
+if [ -z "${CLI2}" ]; then
+   exit 0
+fi
+
+EMPTY="$(mktemp -d)"
+trap 'rm -rf "${EMPTY}"' EXIT
+
+( cd "${EMPTY}" && "${CLI2}" "${FILE}" 2>&1 || true ) \
+   | sed -E "s#^[^ ]*\.(md|markdown)(:[0-9]+(:[0-9]+)?)#${FILE}\2#"

@@ -329,7 +329,8 @@ brew install \
    bash-language-server
 ```
 
-`vscode-json-language-server` ships with VS Code's language services package:
+`vscode-json-language-server` and `vscode-eslint-language-server` (see lint
+diagnostics below) both ship with VS Code's language services package:
 
 ```
 npm install -g vscode-langservers-extracted
@@ -349,6 +350,55 @@ hx --health rust
 
 If any show "Not found" for their language server, confirm the binary is
 on your `PATH` in the same shell where you launch Helix.
+
+#### Lint diagnostics (eslint, markdownlint)
+
+In Helix, inline diagnostics come from language servers, not formatters. Type
+errors already arrive via `typescript-language-server`. `languages.toml` adds
+two more diagnostic sources:
+
+   * **eslint** on JS/TS/Vue via `vscode-eslint-language-server` (from the
+     `vscode-langservers-extracted` package installed above). It runs each
+     project's own eslint, so it honors that repo's config and rules; a repo
+     with no eslint config simply shows nothing.
+   * **markdownlint** on Markdown via `efm-langserver`, a generic bridge that
+     wraps external linters as an LSP. It runs the `markdownlint-file` wrapper
+     (in the Helix config dir), which prefers each project's own
+     `markdownlint-cli2` and config so diagnostics match that repo's
+     `npm run markdownlint`. The `markdownlint-cli2` installed below is only a
+     fallback for projects that do not vendor their own; note a global version
+     may differ from a project's and report different results.
+
+```
+brew install efm-langserver markdownlint-cli2
+```
+
+> Note: if eslint diagnostics do not appear in a project, confirm the project
+> uses a config style the server recognizes (flat `eslint.config.js` is
+> auto-detected by recent server versions; very old `.eslintrc`-only setups
+> may need `experimental.useFlatConfig` set in the `eslint` language-server
+> config).
+
+#### Markdown formatting (dprint)
+
+`languages.toml` uses `dprint` to format Markdown (`:format` / space-mode
+format). This is formatting only and is separate from the markdownlint
+diagnostics above.
+
+```
+brew install dprint
+```
+
+#### Smart reflow (`par`)
+
+The `A-r` / `A-w` keybindings in `config.toml` pipe the selection through
+`par` to re-wrap long lines. Unlike Helix's built-in `:reflow`, `par` keeps
+the indentation and the comment/quote prefix (`//`, `#`, `*`, `>`) on every
+wrapped line, even when reflowing a single line.
+
+```
+brew install par
+```
 
 #### Vue support (`.vue` files)
 
