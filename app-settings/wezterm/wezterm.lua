@@ -14,6 +14,10 @@ config = wezterm.config_builder()
 
 config = {
    automatically_reload_config = true,
+   -- Treat Option as Alt (not macOS compose) so Alt-based keybindings reach
+   -- the terminal, e.g. Helix A-r/A-w reflow. Gives up special-char composition.
+   send_composed_key_when_left_alt_is_pressed = false,
+   send_composed_key_when_right_alt_is_pressed = false,
    window_decorations = "RESIZE", -- disable the title bar but enable the resizable border
    default_cursor_style = "BlinkingBar",
    color_scheme = "Tomorrow Night Bright (Gogh)",
