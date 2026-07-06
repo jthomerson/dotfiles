@@ -273,6 +273,7 @@ brew install \
    ccrypt \
    hugo \
    imagemagick \
+   chafa \
    ghostscript \
    ohcount \
    tmux \
