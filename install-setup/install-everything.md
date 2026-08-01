@@ -626,6 +626,41 @@ gh auth login
 ```
 
 
+### Install GitLab CLI (`glab`)
+
+```bash
+brew install glab
+```
+
+Authenticate with a personal access token rather than the interactive browser flow.
+On a self-hosted instance the browser flow asks for an OAuth `client_id`, which works
+only if a matching OAuth application is registered on the GitLab server itself.
+Without one the login cannot complete. A token sidesteps that entirely.
+
+Create a token under Preferences > Access Tokens with the `api` scope, save it to a
+file, then authenticate against that host. Repeat for each instance you use:
+
+```bash
+cat ~/.creds/gitlab | glab auth login --hostname gitlab.example.com \
+   --stdin --git-protocol ssh --api-protocol https
+```
+
+Piping the token via `--stdin` keeps it out of your shell history and the process
+list. A few things that are easy to lose track of later:
+
+   * The token is stored in the macOS keyring, not on disk. The config file records
+     only the username and protocol settings, so it looks empty even when login
+     succeeded.
+   * On macOS the config lives at `~/Library/Application Support/glab-cli/config.yml`,
+     not the `~/.config/glab-cli/` path that `glab auth login --help` describes.
+   * Re-run the same login command whenever the token expires.
+   * An abandoned login attempt leaves an empty host stanza behind, and that alone
+     makes `glab auth status` report failure even when every host you actually use
+     is authenticated. Delete the unused stanza.
+
+Verify with `glab auth status`. Each authenticated host should report `Logged in`.
+
+
 ### Configure iMessage
 
    * Sign in with your iCloud account on iMessage for Mac.
