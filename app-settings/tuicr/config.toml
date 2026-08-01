@@ -1,0 +1,33 @@
+# Bundled themes: dark, light, ayu-light, ayu-mirage, onedark, github-light,
+# github-dark, catppuccin-latte, catppuccin-frappe, catppuccin-macchiato,
+# catppuccin-mocha, everforest-dark, everforest-light, gruvbox-dark,
+# gruvbox-light, nord-dark, nord-light, nord-dark-high-contrast,
+# nord-light-high-contrast, solarized-light, solarized-dark,
+# tokyo-night-storm, tokyo-night-day
+theme = "tokyo-night-storm"
+
+diff_view = "unified"
+ignore_whitespace = false
+show_file_list = true
+mouse = true
+leader = ";"
+comment_vim = true
+comment_tab_width = 3
+wrap = true
+cursor_line = true
+transparent_background = true
+scroll_offset = 5
+no_update_check = false
+review_watch_interval_ms = 1000
+
+backend = "libgit2"
+
+comment_types = [
+   { id = "note", label = "question", definition = "ask for clarification", color = "yellow" },
+   { id = "suggestion", definition = "possible improvements" },
+   { id = "issue", definition = "problems to fix" },
+   { id = "nit", label = "nitpick", definition = "small optional tweaks", color = "#d19a66" },
+]
+
+[forge]
+comment_type_prefix = true

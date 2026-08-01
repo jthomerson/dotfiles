@@ -661,6 +661,36 @@ list. A few things that are easy to lose track of later:
 Verify with `glab auth status`. Each authenticated host should report `Logged in`.
 
 
+### Install tuicr
+
+[tuicr][tuicr] is a terminal code review UI with vim keybindings. It reviews local
+commits, GitHub pull requests, and GitLab merge requests.
+
+```bash
+brew install agavra/tap/tuicr
+ln -sfn ~/code/jthomerson/dotfiles/app-settings/tuicr ~/.config/tuicr
+```
+
+tuicr stores no credentials of its own. It shells out to `gh` for GitHub and `glab`
+for GitLab, so both must be authenticated first for review submission to work, and
+comments post as whichever account those CLIs are logged in as. A self-hosted GitLab
+remote is only recognized as GitLab once its host is authenticated in `glab`;
+otherwise tuicr falls back to treating the remote as GitHub.
+
+Usage:
+
+```bash
+tuicr                      # review the working tree / pick commits
+tuicr pr 125               # review a GitHub pull request
+tuicr mr 125               # review a GitLab merge request
+tuicr --stdout             # export the review as Markdown instead of copying it
+```
+
+Press `?` inside the app for keybindings. The leader key is `;`.
+
+[tuicr]: https://github.com/agavra/tuicr
+
+
 ### Configure iMessage
 
    * Sign in with your iCloud account on iMessage for Mac.
