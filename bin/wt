@@ -20,6 +20,7 @@ USAGE
                           on the remote, check it out; otherwise create it from --base.
                           Prints the worktree's path.
    wt ls [repo]           List worktrees: name, branch, uncommitted changes, unpushed commits
+   wt ls --all            List every worktree under the root, grouped by group and repo
    wt rm <worktree> [--force]
                           Remove a worktree, and its local branch unless that branch
                           has commits that aren't on the remote
@@ -316,22 +317,67 @@ print_worktree_row() {
 
    # Git still lists a worktree whose folder was deleted until `git worktree prune`
    if [ ! -d "$path" ]; then
-      printf '%-50s %-45s %9s %9s\n' "$(basename "$path")" "(folder gone; git worktree prune)" "-" "-"
+      printf '%-50.50s %-45.45s %9s %9s\n' "$(basename "$path")" "(folder gone; git worktree prune)" "-" "-"
       return
    fi
    dirty=$(git -C "$path" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
    unpushed=$(git -C "$path" rev-list --count HEAD --not --remotes 2>/dev/null || echo "?")
-   printf '%-50s %-45s %9s %9s\n' "$(basename "$path")" "$branch" "$dirty" "$unpushed"
+   printf '%-50.50s %-45.45s %9s %9s\n' "$(basename "$path")" "$branch" "$dirty" "$unpushed"
 }
 
 cmd_ls() {
    local main path branch
 
+   if [ "${1:-}" = "--all" ]; then
+      cmd_ls_all
+      return
+   fi
    main=$(get_main_clone "${1:-}")
    printf '%-50s %-45s %9s %9s\n' "WORKTREE" "BRANCH" "CHANGED" "UNPUSHED"
    while read -r path branch; do
       print_worktree_row "$path" "$branch"
    done < <(list_worktrees "$main")
+}
+
+# Prints the config alias for <group>/<repo>, or the repo's folder name if it has none
+get_repo_label() {
+   local key="$1" alias=""
+
+   if [ -f "$CONFIG" ]; then
+      alias=$(jq -r --arg main "$(get_code_root)/$key" --arg home "$HOME" '
+         [.repos // {} | to_entries[] | select((.value.path | sub("^~"; $home)) == $main) | .key]
+         | first // empty
+      ' "$CONFIG")
+   fi
+   echo "${alias:-${key#*/}}"
+}
+
+# Lists every worktree under the root, showing each group and repo name only on its first row
+cmd_ls_all() {
+   local root rel group repo name label branch group_width=5 repo_width=4 last_group="" last_repo="" rels
+
+   root=$(get_root)
+   rels=$(find "$root" -mindepth 3 -maxdepth 3 -type d 2>/dev/null | sed "s|^$root/||" | sort)
+   [ -n "$rels" ] || die "no worktrees under $root"
+
+   while IFS=/ read -r group repo name; do
+      label=$(get_repo_label "$group/$repo")
+      [ "${#group}" -le "$group_width" ] || group_width=${#group}
+      [ "${#label}" -le "$repo_width" ] || repo_width=${#label}
+   done <<< "$rels"
+
+   printf "%-${group_width}s  %-${repo_width}s  " "GROUP" "REPO"
+   printf '%-50s %-45s %9s %9s\n' "WORKTREE" "BRANCH" "CHANGED" "UNPUSHED"
+   while IFS= read -r rel; do
+      IFS=/ read -r group repo name <<< "$rel"
+      branch=$(git -C "$root/$rel" symbolic-ref --quiet --short HEAD 2>/dev/null || echo "(detached)")
+      printf "%-${group_width}s  %-${repo_width}s  " \
+         "$([ "$group" = "$last_group" ] || echo "$group")" \
+         "$([ "$group/$repo" = "$last_repo" ] || get_repo_label "$group/$repo")"
+      print_worktree_row "$root/$rel" "$branch"
+      last_group="$group"
+      last_repo="$group/$repo"
+   done <<< "$rels"
 }
 
 # Resolves a worktree name, path, or "." to a worktree path
