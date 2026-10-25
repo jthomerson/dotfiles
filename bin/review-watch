@@ -122,8 +122,10 @@ get_default_host() {
 
 # --- State ---------------------------------------------------------------------------
 
+# Prints nothing for a missing field. `values` rather than `// empty`, which would also
+# drop false.
 get_state() {
-   jq -r --arg key "$1" --arg field "$2" '.[$key][$field] // empty' "$STATE"
+   jq -r --arg key "$1" --arg field "$2" '.[$key][$field] | values' "$STATE"
 }
 
 # Merges a JSON object into one merge request's entry
