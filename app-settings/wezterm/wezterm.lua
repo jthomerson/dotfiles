@@ -10,6 +10,23 @@ if not ok then
    local_config = {}
 end
 
+-- WezTerm would take Cmd+Arrow before Herdr saw it, so when the pane is running Herdr, send
+-- Herdr's own pane-focus keys (its prefix, then h/j/k/l) instead of moving WezTerm panes
+local function navigate_pane(direction, herdr_key)
+   return wezterm.action_callback(function(window, pane)
+      local process = pane:get_foreground_process_name() or ""
+
+      if process:match("herdr$") then
+         window:perform_action(act.Multiple({
+            act.SendKey({ key = "b", mods = "CTRL" }),
+            act.SendKey({ key = herdr_key }),
+         }), pane)
+         return
+      end
+      window:perform_action(act.ActivatePaneDirection(direction), pane)
+   end)
+end
+
 config = wezterm.config_builder()
 
 config = {
@@ -46,14 +63,14 @@ config = {
       { key = "[", mods = "CMD", action = act.ActivatePaneDirection("Prev") },
       { key = "]", mods = "CMD", action = act.ActivatePaneDirection("Next") },
       -- Cmd+Arrow or Cmd+Opt+Arrow: navigate to adjacent pane directionally
-      { key = "LeftArrow",  mods = "CMD",     action = act.ActivatePaneDirection("Left") },
-      { key = "RightArrow", mods = "CMD",     action = act.ActivatePaneDirection("Right") },
-      { key = "UpArrow",    mods = "CMD",     action = act.ActivatePaneDirection("Up") },
-      { key = "DownArrow",  mods = "CMD",     action = act.ActivatePaneDirection("Down") },
-      { key = "LeftArrow",  mods = "CMD|OPT", action = act.ActivatePaneDirection("Left") },
-      { key = "RightArrow", mods = "CMD|OPT", action = act.ActivatePaneDirection("Right") },
-      { key = "UpArrow",    mods = "CMD|OPT", action = act.ActivatePaneDirection("Up") },
-      { key = "DownArrow",  mods = "CMD|OPT", action = act.ActivatePaneDirection("Down") },
+      { key = "LeftArrow",  mods = "CMD",     action = navigate_pane("Left", "h") },
+      { key = "RightArrow", mods = "CMD",     action = navigate_pane("Right", "l") },
+      { key = "UpArrow",    mods = "CMD",     action = navigate_pane("Up", "k") },
+      { key = "DownArrow",  mods = "CMD",     action = navigate_pane("Down", "j") },
+      { key = "LeftArrow",  mods = "CMD|OPT", action = navigate_pane("Left", "h") },
+      { key = "RightArrow", mods = "CMD|OPT", action = navigate_pane("Right", "l") },
+      { key = "UpArrow",    mods = "CMD|OPT", action = navigate_pane("Up", "k") },
+      { key = "DownArrow",  mods = "CMD|OPT", action = navigate_pane("Down", "j") },
       -- Cmd+Shift+Enter: toggle pane zoom (full-screen within window)
       { key = "Enter", mods = "CMD|SHIFT", action = act.TogglePaneZoomState },
       -- Cmd+Opt+[ / Cmd+Opt+]: rotate/move panes (swap current pane left/right)
