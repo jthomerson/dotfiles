@@ -508,6 +508,8 @@ Key bindings:
      `wezterm.lua` sends Herdr's pane-focus keys (its `ctrl+b` prefix, then h/j/k/l)
      whenever the focused WezTerm pane is running Herdr. Those are Herdr's defaults; if
      you rebind them in `config.toml`, update `wezterm.lua` to match.
+   * Cmd+Shift+Return zooms the Herdr pane, the same way: `wezterm.lua` sends `ctrl+b`
+     then `z`.
    * Everything else is Herdr's default. Press `ctrl+b` then `?` for the list, or run
      `herdr --default-config` to see every binding.
 
