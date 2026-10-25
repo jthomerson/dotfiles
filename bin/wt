@@ -1,0 +1,496 @@
+#!/usr/bin/env bash
+#
+# wt: create and manage git worktrees under one directory. Run `wt --help` for usage.
+
+set -euo pipefail
+
+CONFIG="${WT_CONFIG:-$HOME/code/.worktrees.json}"
+
+usage() {
+   cat <<'EOF'
+wt: create and manage git worktrees under one directory
+
+Every worktree lives at <root>/<group>/<repo>/<name> (root defaults to ~/code/worktrees),
+branched from the repo's main clone, which should stay on its default branch.
+Config: ~/code/.worktrees.json (worktree root, repo aliases, and each repo's private files)
+
+USAGE
+   wt new <repo> <branch> [--base <ref>] [--name <name>]
+                          Create a worktree for <branch>. If the branch exists locally or
+                          on the remote, check it out; otherwise create it from --base.
+                          Prints the worktree's path.
+   wt ls [repo]           List worktrees: name, branch, uncommitted changes, unpushed commits
+   wt rm <worktree> [--force]
+                          Remove a worktree, and its local branch unless that branch
+                          has commits that aren't on the remote
+   wt sync [repo]         Re-apply private files to existing worktrees (after you change
+                          the config or add a file to the main clone)
+   wt doctor [repo]       Report broken private-file links, files missing from the main
+                          clone, and worktrees outside the root
+
+ARGUMENTS
+   <repo>       An alias you define in the config, a path to a main clone, or
+                <group>/<repo>. Defaults to the repo of the current directory.
+   <worktree>   A worktree name, a path, or "." for the current directory.
+
+OPTIONS
+   --base <ref>   Start a new branch from <ref> (default: the remote's default branch,
+                  fetched first)
+   --name <name>  Folder name to use instead of the branch-derived one
+   --force        With rm: remove even with uncommitted changes or unpushed commits
+
+NAMING
+   The folder is the branch with "/" replaced by "-":
+      jdoe/1234-add-login  ->  <root>/acme/webapp/jdoe-1234-add-login
+
+SETUP (new runs all three; sync runs only step 1)
+   1. Link each private file listed in the config from the main clone (or copy it, for
+      files that must not be symlinks, such as code that gets imported)
+   2. Clone the main clone's node_modules with copy-on-write (instant, no extra disk)
+   3. Run `nvm use && npm i` to reconcile dependencies
+
+SAFETY
+   rm refuses if the worktree has uncommitted changes or commits that aren't on the
+   remote. wt never changes the main clone's files or branch; it only adds private
+   paths to the repo's .git/info/exclude so linked files are never committed.
+
+CONFIG
+   {
+      "root": "~/code/worktrees",
+      "codeRoot": "~/code",
+      "repos": {
+         "webapp": {
+            "path": "~/code/acme/webapp",
+            "link": [ "CLAUDE.md", "config/local.env", "scripts/fixtures/private" ],
+            "copy": [ "config/local-settings.js" ]
+         }
+      }
+   }
+   <group>/<repo> is the main clone's path relative to codeRoot.
+
+EXAMPLES
+   wt new webapp jdoe/1234-add-login
+   cd "$(wt new acme/api jdoe/fix-timeouts --base origin/release-2)"
+   wt new webapp feature/new-search --name review-johndoe-512-new-search
+   wt ls webapp
+   wt rm jdoe-1234-add-login
+EOF
+}
+
+die() {
+   echo "wt: $*" >&2
+   exit 1
+}
+
+say() {
+   echo "$*" >&2
+}
+
+expand_home() {
+   echo "${1/#\~/$HOME}"
+}
+
+get_config_value() {
+   local query="$1" fallback="$2" value=""
+
+   if [ -f "$CONFIG" ]; then
+      value=$(jq -r "$query // empty" "$CONFIG")
+   fi
+   expand_home "${value:-$fallback}"
+}
+
+get_root() {
+   get_config_value '.root' '~/code/worktrees'
+}
+
+get_code_root() {
+   get_config_value '.codeRoot' '~/code'
+}
+
+# Prints the main clone of the repo containing <dir>
+get_main_clone_of() {
+   local common
+
+   common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+   dirname "$common"
+}
+
+# Resolves an alias, a path, or <group>/<repo> to a main clone
+get_main_clone() {
+   local spec="${1:-}" alias_path=""
+
+   if [ -z "$spec" ]; then
+      get_main_clone_of "$PWD" || die "not in a git repo; name a repo"
+      return
+   fi
+   if [ -f "$CONFIG" ]; then
+      alias_path=$(jq -r --arg a "$spec" '.repos[$a].path // empty' "$CONFIG")
+   fi
+   if [ -n "$alias_path" ]; then
+      get_main_clone_of "$(expand_home "$alias_path")" || die "alias $spec points at $alias_path, which is not a git repo"
+   elif [ -d "$spec" ]; then
+      get_main_clone_of "$spec" || die "$spec is not a git repo"
+   elif [ -d "$(get_code_root)/$spec" ]; then
+      get_main_clone_of "$(get_code_root)/$spec" || die "$(get_code_root)/$spec is not a git repo"
+   else
+      die "unknown repo: $spec"
+   fi
+}
+
+# Prints <group>/<repo> for a main clone
+get_repo_key() {
+   local main="$1" code_root
+
+   code_root=$(get_code_root)
+   [[ "$main" == "$code_root"/* ]] || die "$main is not under $code_root"
+   echo "${main#"$code_root"/}"
+}
+
+# Prints the config entry (JSON) whose path is this main clone, or null
+get_repo_config() {
+   local main="$1"
+
+   if [ ! -f "$CONFIG" ]; then
+      echo null
+      return
+   fi
+   jq --arg main "$main" --arg home "$HOME" '
+      [.repos // {} | to_entries[] | select((.value.path | sub("^~"; $home)) == $main) | .value]
+      | first // null
+   ' "$CONFIG"
+}
+
+get_default_ref() {
+   local main="$1" ref
+
+   ref=$(git -C "$main" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) || ref="origin/master"
+   echo "$ref"
+}
+
+# Prints "<path> <branch>" for each worktree of a main clone, excluding the main clone
+list_worktrees() {
+   local main="$1"
+
+   git -C "$main" worktree list --porcelain | awk -v main="$main" '
+      /^worktree / { path = substr($0, 10); branch = "(detached)" }
+      /^branch / { branch = substr($0, 8); sub("^refs/heads/", "", branch) }
+      /^$/ { if (path != main) { print path " " branch } }
+   '
+}
+
+# A symlinked directory does not match a "dir/" ignore rule, so list every private path in
+# the shared info/exclude to keep it out of commits
+exclude_path() {
+   local main="$1" entry="$2" exclude
+
+   exclude="$(git -C "$main" rev-parse --path-format=absolute --git-common-dir)/info/exclude"
+   mkdir -p "$(dirname "$exclude")"
+   if ! grep -qxF "/$entry" "$exclude" 2>/dev/null; then
+      echo "/$entry" >> "$exclude"
+   fi
+}
+
+apply_private_files() {
+   local main="$1" worktree="$2" repo_config entry src dst
+
+   repo_config=$(get_repo_config "$main")
+   while IFS= read -r entry; do
+      entry="${entry%/}"
+      [ -n "$entry" ] || continue
+      exclude_path "$main" "$entry"
+      src="$main/$entry"
+      dst="$worktree/$entry"
+      if [ ! -e "$src" ]; then
+         say "   missing in main clone, skipped: $entry"
+      elif [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+         continue
+      elif [ -e "$dst" ] || [ -L "$dst" ]; then
+         say "   already exists, left alone: $entry"
+      else
+         mkdir -p "$(dirname "$dst")"
+         ln -s "$src" "$dst"
+         say "   linked $entry"
+      fi
+   done < <(jq -r '.link // [] | .[]' <<< "$repo_config")
+
+   while IFS= read -r entry; do
+      entry="${entry%/}"
+      [ -n "$entry" ] || continue
+      exclude_path "$main" "$entry"
+      src="$main/$entry"
+      dst="$worktree/$entry"
+      if [ ! -e "$src" ]; then
+         say "   missing in main clone, skipped: $entry"
+      elif [ -e "$dst" ]; then
+         continue
+      else
+         mkdir -p "$(dirname "$dst")"
+         /bin/cp -c -Rp "$src" "$dst"
+         say "   copied $entry"
+      fi
+   done < <(jq -r '.copy // [] | .[]' <<< "$repo_config")
+}
+
+clone_node_modules() {
+   local main="$1" worktree="$2" dir rel
+
+   while IFS= read -r dir; do
+      rel="${dir#"$main"/}"
+      if [ -d "$worktree/$(dirname "$rel")" ] && [ ! -e "$worktree/$rel" ]; then
+         say "   cloning $rel"
+         /bin/cp -c -R "$dir" "$worktree/$rel"
+      fi
+   done < <(find "$main" -name node_modules -type d -prune -not -path "$main/.git/*")
+}
+
+install_dependencies() {
+   local worktree="$1"
+
+   [ -f "$worktree/package.json" ] || return 0
+   say "   running nvm use && npm i"
+   (
+      cd "$worktree"
+      # nvm.sh reads unset variables
+      set +u
+      # shellcheck disable=SC1091
+      . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+      if [ -f .nvmrc ]; then
+         nvm use >&2 || nvm install >&2
+      fi
+      npm i >&2
+   ) || say "   dependency install failed; the worktree is ready otherwise"
+}
+
+cmd_new() {
+   local repo="" branch="" base="" name="" main worktree
+
+   while [ $# -gt 0 ]; do
+      case "$1" in
+         --base) base="$2"; shift 2 ;;
+         --name) name="$2"; shift 2 ;;
+         -*) die "unknown option: $1" ;;
+         *)
+            if [ -z "$repo" ]; then
+               repo="$1"
+            elif [ -z "$branch" ]; then
+               branch="$1"
+            else
+               die "too many arguments"
+            fi
+            shift
+            ;;
+      esac
+   done
+   [ -n "$branch" ] || die "usage: wt new <repo> <branch> [--base <ref>] [--name <name>]"
+
+   main=$(get_main_clone "$repo")
+   name="${name:-${branch//\//-}}"
+   worktree="$(get_root)/$(get_repo_key "$main")/$name"
+   [ ! -e "$worktree" ] || die "$worktree already exists"
+
+   say "Fetching origin"
+   git -C "$main" fetch --quiet origin
+   mkdir -p "$(dirname "$worktree")"
+
+   if git -C "$main" show-ref --verify --quiet "refs/heads/$branch"; then
+      say "Checking out existing branch $branch"
+      git -C "$main" worktree add --quiet "$worktree" "$branch" >&2
+   elif git -C "$main" show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+      say "Checking out origin/$branch"
+      git -C "$main" worktree add --quiet --track -b "$branch" "$worktree" "origin/$branch" >&2
+   else
+      base="${base:-$(get_default_ref "$main")}"
+      say "Creating branch $branch from $base"
+      git -C "$main" worktree add --quiet --no-track -b "$branch" "$worktree" "$base" >&2
+   fi
+
+   say "Setting up $worktree"
+   apply_private_files "$main" "$worktree"
+   clone_node_modules "$main" "$worktree"
+   install_dependencies "$worktree"
+   echo "$worktree"
+}
+
+print_worktree_row() {
+   local path="$1" branch="$2" dirty unpushed
+
+   # Git still lists a worktree whose folder was deleted until `git worktree prune`
+   if [ ! -d "$path" ]; then
+      printf '%-50s %-45s %9s %9s\n' "$(basename "$path")" "(folder gone; git worktree prune)" "-" "-"
+      return
+   fi
+   dirty=$(git -C "$path" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+   unpushed=$(git -C "$path" rev-list --count HEAD --not --remotes 2>/dev/null || echo "?")
+   printf '%-50s %-45s %9s %9s\n' "$(basename "$path")" "$branch" "$dirty" "$unpushed"
+}
+
+cmd_ls() {
+   local main path branch
+
+   main=$(get_main_clone "${1:-}")
+   printf '%-50s %-45s %9s %9s\n' "WORKTREE" "BRANCH" "CHANGED" "UNPUSHED"
+   while read -r path branch; do
+      print_worktree_row "$path" "$branch"
+   done < <(list_worktrees "$main")
+}
+
+# Resolves a worktree name, path, or "." to a worktree path
+get_worktree() {
+   local spec="$1" main path
+
+   if [ "$spec" = "." ] || [ -d "$spec" ]; then
+      path=$(git -C "${spec}" rev-parse --show-toplevel 2>/dev/null) || die "$spec is not in a git worktree"
+      echo "$path"
+      return
+   fi
+   if main=$(get_main_clone_of "$PWD"); then
+      path="$(get_root)/$(get_repo_key "$main")/$spec"
+      [ -d "$path" ] || die "no worktree named $spec for $(get_repo_key "$main")"
+      echo "$path"
+      return
+   fi
+
+   # Outside a repo, look the name up across every repo under the root
+   path=$(find "$(get_root)" -mindepth 3 -maxdepth 3 -type d -name "$spec" 2>/dev/null)
+   [ -n "$path" ] || die "no worktree named $spec under $(get_root)"
+   [ "$(wc -l <<< "$path")" -eq 1 ] || die "several worktrees are named $spec; give a path"
+   echo "$path"
+}
+
+cmd_rm() {
+   local spec="" force="" worktree main branch dirty unpushed
+
+   while [ $# -gt 0 ]; do
+      case "$1" in
+         --force) force=1; shift ;;
+         -*) die "unknown option: $1" ;;
+         *) spec="$1"; shift ;;
+      esac
+   done
+   [ -n "$spec" ] || die "usage: wt rm <worktree> [--force]"
+
+   worktree=$(get_worktree "$spec")
+   main=$(get_main_clone_of "$worktree")
+   [ "$worktree" != "$main" ] || die "$worktree is the main clone; wt never removes it"
+
+   branch=$(git -C "$worktree" symbolic-ref --quiet --short HEAD || true)
+   dirty=$(git -C "$worktree" status --porcelain | wc -l | tr -d ' ')
+   unpushed=$(git -C "$worktree" rev-list --count HEAD --not --remotes)
+   if [ -z "$force" ] && [ "$dirty" != "0" ]; then
+      die "$worktree has $dirty uncommitted change(s); commit them or use --force"
+   fi
+   if [ -z "$force" ] && [ "$unpushed" != "0" ]; then
+      die "$worktree has $unpushed commit(s) not on the remote; push them or use --force"
+   fi
+
+   # wt has already checked for changes and unpushed commits; --force also lets git remove
+   # worktrees that contain submodules
+   git -C "$main" worktree remove --force "$worktree" >&2
+   say "Removed $worktree"
+   [ -n "$branch" ] || return 0
+
+   # A branch whose commits are all on the remote loses nothing by being deleted locally;
+   # review and agent branches are rarely "merged" from git's point of view
+   if [ "$(git -C "$main" rev-list --count "$branch" --not --remotes)" = "0" ]; then
+      git -C "$main" branch -D "$branch" >/dev/null
+      say "Deleted local branch $branch (all of its commits are on the remote)"
+   else
+      say "Kept branch $branch (it has commits that aren't on the remote)"
+   fi
+}
+
+# Prints the main clones to act on: the named repo, or every repo in the config
+list_target_repos() {
+   local spec="${1:-}" path
+
+   if [ -n "$spec" ]; then
+      get_main_clone "$spec"
+      return
+   fi
+   [ -f "$CONFIG" ] || die "no config at $CONFIG; name a repo"
+   while IFS= read -r path; do
+      get_main_clone_of "$(expand_home "$path")" || say "wt: skipping $path (not a git repo)"
+   done < <(jq -r '.repos // {} | .[].path' "$CONFIG")
+}
+
+cmd_sync() {
+   local main path branch repos
+
+   repos=$(list_target_repos "${1:-}")
+   while IFS= read -r main; do
+      while read -r path branch; do
+         say "$path"
+         apply_private_files "$main" "$path"
+      done < <(list_worktrees "$main")
+   done <<< "$repos"
+}
+
+cmd_doctor() {
+   local main path branch repo_config entry problems=0 root repos key
+
+   root=$(get_root)
+   repos=$(list_target_repos "${1:-}")
+   while IFS= read -r main; do
+      key=$(get_repo_key "$main")
+      say "== $key"
+      repo_config=$(get_repo_config "$main")
+      while IFS= read -r entry; do
+         entry="${entry%/}"
+         [ -n "$entry" ] || continue
+         if [ ! -e "$main/$entry" ]; then
+            say "   main clone is missing private file: $entry"
+            problems=$((problems + 1))
+         fi
+      done < <(jq -r '(.link // []) + (.copy // []) | .[]' <<< "$repo_config")
+
+      while read -r path branch; do
+         if [[ "$path" != "$root"/* ]]; then
+            say "   outside $root: $path ($branch)"
+            problems=$((problems + 1))
+         fi
+         while IFS= read -r entry; do
+            entry="${entry%/}"
+            [ -n "$entry" ] || continue
+            if [ ! -L "$path/$entry" ] && [ -e "$path/$entry" ]; then
+               say "   $(basename "$path"): not a link to the main clone (a separate copy): $entry"
+               problems=$((problems + 1))
+            elif [ ! -e "$path/$entry" ]; then
+               say "   $(basename "$path"): missing or broken: $entry"
+               problems=$((problems + 1))
+            fi
+         done < <(jq -r '.link // [] | .[]' <<< "$repo_config")
+         while IFS= read -r entry; do
+            entry="${entry%/}"
+            [ -n "$entry" ] || continue
+            if [ ! -e "$path/$entry" ]; then
+               say "   $(basename "$path"): missing: $entry"
+               problems=$((problems + 1))
+            fi
+         done < <(jq -r '.copy // [] | .[]' <<< "$repo_config")
+      done < <(list_worktrees "$main")
+   done <<< "$repos"
+
+   if [ "$problems" -eq 0 ]; then
+      say "No problems found"
+   else
+      say "$problems problem(s) found; \`wt sync\` fixes missing links in worktrees"
+      return 1
+   fi
+}
+
+main() {
+   local command="${1:-}"
+
+   [ $# -eq 0 ] || shift
+   case "$command" in
+      new) cmd_new "$@" ;;
+      ls) cmd_ls "$@" ;;
+      rm) cmd_rm "$@" ;;
+      sync) cmd_sync "$@" ;;
+      doctor) cmd_doctor "$@" ;;
+      -h|--help|help|"") usage ;;
+      *) die "unknown command: $command (see wt --help)" ;;
+   esac
+}
+
+main "$@"

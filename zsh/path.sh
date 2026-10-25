@@ -203,3 +203,6 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 export PATH="$ANDROID_HOME/emulator:$PATH"
 export PATH="$JAVA_HOME/bin:$PATH"
+
+# Scripts from these dotfiles (e.g. wt):
+export PATH="${HOME}/code/jthomerson/dotfiles/bin:$PATH"
