@@ -370,11 +370,16 @@ update_tab_label() {
    log "renamed tab $tab to $label"
 }
 
-# Closes a finished review's tab and removes its worktree
+# Closes a finished review's tab and removes its worktree. Waits while Claude is still busy
+# in the tab, since closing it would kill the session (say, while it cleans up after merging).
 clean_up() {
-   local key="$1" label="$2" project="$3" number="$4" tab worktree failed=""
+   local key="$1" label="$2" project="$3" number="$4" tab worktree agent_status failed=""
 
    if [ -n "$dry_run" ]; then log "would clean up $label"; return; fi
+   agent_status=$(get_agent_status "$(get_state "$key" pane)")
+   if [ -n "$agent_status" ] && [ "$agent_status" != "idle" ]; then
+      return 0
+   fi
    tab=$(get_state "$key" tab)
    if [ -n "$tab" ]; then
       herdr tab close "$tab" > /dev/null 2>&1 || true
@@ -385,14 +390,19 @@ clean_up() {
          log "removed $worktree"
       else
          failed=1
-         log "kept $worktree: wt rm refused (run \`wt rm\` there to see why)"
+         # Every poll tries again, but says so only the first time
+         if [ "$(get_state "$key" cleanupRefused)" != "true" ]; then
+            log "kept $worktree: wt rm refused (run \`wt rm\` there to see why)"
+         fi
       fi
    done < <(list_review_worktrees "$project" "$number")
 
-   if [ -z "$failed" ]; then
-      delete_state "$key"
-      log "cleaned up $label"
+   if [ -n "$failed" ]; then
+      set_state "$key" '{"cleanupRefused": true}'
+      return
    fi
+   delete_state "$key"
+   log "cleaned up $label"
 }
 
 # --- Polling -------------------------------------------------------------------------
