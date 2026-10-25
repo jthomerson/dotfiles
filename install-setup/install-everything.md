@@ -471,6 +471,38 @@ curl -fsSL https://claude.ai/install.sh | bash
 This installs to `~/.local/bin/claude`, which is already on `PATH` via `~/.zshrc`.
 
 
+### Install and Configure Herdr
+
+[Herdr][herdr] is the terminal workspace manager the Claude sessions run in: a workspace
+per repo, with a tab per worktree or review. It runs inside WezTerm.
+
+```bash
+brew install herdr
+mkdir -p ~/.config/herdr
+ln -sfn ~/code/jthomerson/dotfiles/app-settings/herdr/config.toml ~/.config/herdr/config.toml
+herdr integration install claude
+```
+
+The Claude integration installs a hook script in `~/.claude/hooks` and registers it as a
+`SessionStart` hook in `~/.claude/settings.json`, so Herdr can show each Claude session's
+state. Check it with `herdr integration status`.
+
+Key bindings:
+
+   * Cmd+Arrow moves between panes. WezTerm would otherwise take the keystroke, so
+     `wezterm.lua` sends Herdr's pane-focus keys (its `ctrl+b` prefix, then h/j/k/l)
+     whenever the focused WezTerm pane is running Herdr. Those are Herdr's defaults; if
+     you rebind them in `config.toml`, update `wezterm.lua` to match.
+   * Everything else is Herdr's default. Press `ctrl+b` then `?` for the list, or run
+     `herdr --default-config` to see every binding.
+
+`review-watch` (in this repo's `bin`) runs code reviews for merge requests assigned to me
+in Herdr tabs. Start it in a pane of the Reviews workspace; `review-watch --help` has the
+details.
+
+[herdr]: https://herdr.dev
+
+
 ### Install More GUI Apps
 
    * [Remember the Milk](https://www.rememberthemilk.com/services/)

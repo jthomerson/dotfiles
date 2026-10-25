@@ -1,0 +1,4 @@
+onboarding = false
+
+[ui]
+status_indicators = "dots"
