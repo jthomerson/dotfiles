@@ -37,17 +37,26 @@ jq -n --arg repo "<path to main clone, or group/repo>" --arg branch "<branch>" \
 ## Code reviews
 
 A review of a merge request always runs in its own worktree, named
-`review-<author>-<number>-<description>`:
+`review-<author>-<number>-<description>`.
+
+Usually a hook has already done the naming when the review starts: the prompt's context
+names the worktree (or the existing one to reuse), and the session is already titled to
+match. Follow that context and skip the steps below.
+
+Without that context (the hook couldn't read the MR), do it yourself:
 
 1. Read the merge request (number, title, author's username, source branch, and project
    path) with the GitLab CLI or API.
 2. Build the name: `review-`, the author's username, the MR number, and two to five words
    from the title in kebab-case. For example, `review-johndoe-9988-reformat-number-strings`.
-3. Write the request file with `repo` set to the project path (for example
+3. If a worktree for this MR already exists (`ls -d ~/code/worktrees/*/*/review-*-<number>-*`
+   matching the author and repo), reuse it: call EnterWorktree with its path, run
+   `git pull --ff-only` there to pick up new commits, and skip step 4.
+4. Write the request file with `repo` set to the project path (for example
    `acme/webapp`, which `wt` resolves under `~/code`) and `branch` set to the source branch.
    Then call EnterWorktree with the name.
-4. A session cannot rename itself. Start your first reply with the worktree name and ask the
-   user to give the session the same name (`/rename <name>`, or Ctrl+R in agent view).
+5. The session is renamed to the worktree name automatically at the user's next prompt (a
+   hook does it). Tell the user the worktree name in your first reply.
 
 When the review is finished and the merge request is merged or closed, `wt rm <name>`
 removes the worktree and its local branch.

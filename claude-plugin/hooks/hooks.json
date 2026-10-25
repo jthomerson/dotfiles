@@ -22,6 +22,22 @@
             ]
          }
       ],
+      "UserPromptSubmit": [
+         {
+            "hooks": [
+               {
+                  "type": "command",
+                  "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/review-start.sh",
+                  "timeout": 30
+               },
+               {
+                  "type": "command",
+                  "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/title-review-session.sh",
+                  "timeout": 10
+               }
+            ]
+         }
+      ],
       "PreToolUse": [
          {
             "matcher": "Bash",
