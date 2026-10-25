@@ -667,7 +667,7 @@ Verify with `glab auth status`. Each authenticated host should report `Logged in
 commits, GitHub pull requests, and GitLab merge requests.
 
 ```bash
-brew install agavra/tap/tuicr
+brew install tuicr
 ln -sfn ~/code/jthomerson/dotfiles/app-settings/tuicr ~/.config/tuicr
 ```
 
@@ -687,6 +687,25 @@ tuicr --stdout             # export the review as Markdown instead of copying it
 ```
 
 Press `?` inside the app for keybindings. The leader key is `;`.
+
+#### tuicr's Claude Code skill
+
+tuicr ships a Claude Code skill that opens a review pane beside the agent (in Herdr, among
+other multiplexers) and reads your comments back. Homebrew doesn't install it, so clone
+the repo, check out the tag matching the installed version, and link the skill:
+
+```bash
+git clone https://github.com/agavra/tuicr.git ~/code/random/tuicr
+git -C ~/code/random/tuicr checkout "v$(tuicr --version | awk '{print $2}')"
+ln -sfn ~/code/random/tuicr/skills/tuicr ~/.claude/skills/tuicr
+```
+
+After `brew upgrade tuicr`, move the clone to the new version's tag the same way:
+
+```bash
+git -C ~/code/random/tuicr fetch --tags
+git -C ~/code/random/tuicr checkout "v$(tuicr --version | awk '{print $2}')"
+```
 
 [tuicr]: https://github.com/agavra/tuicr
 
