@@ -1,0 +1,8 @@
+{
+   "name": "dev-workflow",
+   "version": "0.1.1",
+   "description": "Worktree hooks and guards that route Claude through wt, plus shared-account upkeep",
+   "author": {
+      "name": "Jeremy Thomerson"
+   }
+}

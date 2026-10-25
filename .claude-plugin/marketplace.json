@@ -1,0 +1,13 @@
+{
+   "name": "dotfiles",
+   "owner": {
+      "name": "Jeremy Thomerson"
+   },
+   "plugins": [
+      {
+         "name": "dev-workflow",
+         "source": "./claude-plugin",
+         "description": "Worktree hooks and guards that route Claude through wt, plus shared-account upkeep"
+      }
+   ]
+}

@@ -1,0 +1,49 @@
+{
+   "hooks": {
+      "WorktreeCreate": [
+         {
+            "hooks": [
+               {
+                  "type": "command",
+                  "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/worktree-create.sh",
+                  "timeout": 900
+               }
+            ]
+         }
+      ],
+      "WorktreeRemove": [
+         {
+            "hooks": [
+               {
+                  "type": "command",
+                  "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/worktree-remove.sh",
+                  "timeout": 120
+               }
+            ]
+         }
+      ],
+      "PreToolUse": [
+         {
+            "matcher": "Bash",
+            "hooks": [
+               {
+                  "type": "command",
+                  "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/guard-git-worktree.sh",
+                  "timeout": 10
+               }
+            ]
+         }
+      ],
+      "SessionStart": [
+         {
+            "hooks": [
+               {
+                  "type": "command",
+                  "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/accounts-check.sh",
+                  "timeout": 10
+               }
+            ]
+         }
+      ]
+   }
+}
