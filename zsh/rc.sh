@@ -1,7 +1,7 @@
 SCRIPT_DIR="$( cd "$( dirname "${(%):-%x}" )" >/dev/null 2>&1 && pwd )"
 
 # Environment
-export EDITOR=vim
+export EDITOR=hx
 export CLICOLOR=1
 export LSCOLORS=ExFxCxDxBxegedabagacad
 export MAVEN_OPTS=-Xmx512m
