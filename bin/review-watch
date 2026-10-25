@@ -60,8 +60,49 @@ instead of racing it.
 EOF
 }
 
+# In a terminal, clears the status line first so the message replaces it
 log() {
+   clear_status
    echo "$(date '+%F %T') $*"
+}
+
+# The one-line status shown between log messages. Only in a terminal; it is rewritten in
+# place, so it never scrolls the log.
+show_status() {
+   [ -t 1 ] || return 0
+   printf '\r\033[K%s' "$*"
+}
+
+clear_status() {
+   [ -t 1 ] || return 0
+   printf '\r\033[K'
+}
+
+# Formats seconds as "1m 13s", or "45s" under a minute
+format_duration() {
+   local seconds="$1"
+
+   if [ "$seconds" -ge 60 ]; then
+      echo "$((seconds / 60))m $((seconds % 60))s"
+      return
+   fi
+   echo "${seconds}s"
+}
+
+# Waits out the poll interval, counting down on the status line
+wait_for_next_poll() {
+   local last_poll="$1" next_poll
+
+   if [ ! -t 1 ]; then
+      sleep "$interval"
+      return
+   fi
+   next_poll=$(($(date +%s) + interval))
+   while [ "$(date +%s)" -lt "$next_poll" ]; do
+      show_status "Last poll: $last_poll. Next poll in $(format_duration $((next_poll - $(date +%s))))"
+      sleep 1
+   done
+   clear_status
 }
 
 die() {
@@ -471,6 +512,8 @@ check_finished() {
 }
 
 main() {
+   local last_poll
+
    while [ $# -gt 0 ]; do
       case "$1" in
          --host) host="$2"; shift 2 ;;
@@ -515,9 +558,18 @@ main() {
 
    log "watching merge requests assigned to $username on $host every ${interval}s; tabs go in $workspace_label"
    while true; do
-      with_lock poll || log "poll failed; trying again next time"
-      [ -z "$once" ] || break
-      sleep "$interval"
+      show_status "Polling..."
+      if with_lock poll; then
+         last_poll=$(date '+%T')
+      else
+         last_poll="$(date '+%T') (failed)"
+         log "poll failed; trying again next time"
+      fi
+      if [ -n "$once" ]; then
+         clear_status
+         break
+      fi
+      wait_for_next_poll "$last_poll"
    done
 }
 
