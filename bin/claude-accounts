@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+#
+# Keep extra Claude Code accounts (~/.claude-<name>) sharing everything with ~/.claude except
+# their login, so switching accounts only changes who is billed.
+#
+#   claude-accounts link <name>   Turn ~/.claude-<name> into a thin login dir: shared items
+#                                 become symlinks into ~/.claude, and anything they replace is
+#                                 moved to ~/.claude-backup-accounts/<name>/<timestamp>/.
+#   claude-accounts sync <name>   Copy user MCP servers into the account's state file and
+#                                 install the plugins the shared settings enable.
+#   claude-accounts check         SessionStart hook: repair links in $CLAUDE_CONFIG_DIR.
+#   claude-accounts update        Register shared marketplaces and update every enabled plugin
+#                                 in the main account and every linked account. Plugins read
+#                                 from a local folder need nothing: edits apply next session.
+
+set -euo pipefail
+
+MAIN="$HOME/.claude"
+MAIN_STATE="$HOME/.claude.json"
+BACKUP_ROOT="$HOME/.claude-backup-accounts"
+
+# Everything else in an account dir (login state, daemon, sessions, jobs, caches, plugins,
+# and org policy files) stays per account.
+SHARED_DIRS=(projects rules skills commands agents hooks output-styles file-history paste-cache
+   image-cache plans tasks todos uploads teams markdown-formatting bin)
+SHARED_FILES=(CLAUDE.md settings.json keybindings.json history.jsonl)
+
+die() {
+   echo "claude-accounts: $*" >&2
+   exit 1
+}
+
+get_account_dir() {
+   echo "$HOME/.claude-$1"
+}
+
+# Prints the items to link, creating shared dirs in ~/.claude so later additions propagate
+list_shared_items() {
+   local name
+
+   for name in "${SHARED_DIRS[@]}"; do
+      mkdir -p "$MAIN/$name"
+      echo "$name"
+   done
+   for name in "${SHARED_FILES[@]}"; do
+      if [ -e "$MAIN/$name" ]; then
+         echo "$name"
+      fi
+   done
+}
+
+link_account() {
+   local dir="$1" item target
+   local backup="$BACKUP_ROOT/$(basename "$dir")/$(date +%Y%m%d-%H%M%S)"
+
+   [ -d "$dir" ] || die "$dir does not exist; log in with it once first"
+   [ "$dir" != "$MAIN" ] || die "refusing to link $MAIN to itself"
+
+   while IFS= read -r item; do
+      target="$MAIN/$item"
+      if [ -L "$dir/$item" ] && [ "$(readlink "$dir/$item")" = "$target" ]; then
+         continue
+      fi
+      if [ -e "$dir/$item" ] || [ -L "$dir/$item" ]; then
+         mkdir -p "$backup"
+         mv "$dir/$item" "$backup/$item"
+         echo "   moved $dir/$item to $backup/"
+      fi
+      ln -s "$target" "$dir/$item"
+      echo "   linked $dir/$item"
+   done < <(list_shared_items)
+}
+
+sync_account() {
+   local dir="$1" state="$1/.claude.json" plugin
+
+   [ -f "$state" ] || die "$state is missing; log in with this account first"
+
+   jq --slurpfile main "$MAIN_STATE" '.mcpServers = ((.mcpServers // {}) + ($main[0].mcpServers // {}))' \
+      "$state" > "$state.tmp"
+   mv "$state.tmp" "$state"
+   chmod 600 "$state"
+   echo "   copied user MCP servers into $state"
+
+   while IFS= read -r plugin; do
+      if [ -f "$dir/plugins/installed_plugins.json" ] \
+         && jq -e --arg p "$plugin" '.plugins[$p]' "$dir/plugins/installed_plugins.json" >/dev/null; then
+         continue
+      fi
+      echo "   installing $plugin"
+      CLAUDE_CONFIG_DIR="$dir" claude plugin install "$plugin"
+   done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value) | .key' "$MAIN/settings.json")
+}
+
+# A settings write may replace the symlink with a regular file; keep the change and relink
+check_account() {
+   local dir="${CLAUDE_CONFIG_DIR:-}" item repaired=()
+
+   if [ -z "$dir" ] || [ "$dir" = "$MAIN" ] || [ ! -d "$dir" ]; then
+      return 0
+   fi
+
+   if [ -f "$dir/settings.json" ] && [ ! -L "$dir/settings.json" ]; then
+      cp -p "$MAIN/settings.json" "$MAIN/settings.json.bak"
+      mv "$dir/settings.json" "$MAIN/settings.json"
+      ln -s "$MAIN/settings.json" "$dir/settings.json"
+      repaired+=("settings.json (change kept in ~/.claude/settings.json)")
+   fi
+
+   while IFS= read -r item; do
+      if [ ! -L "$dir/$item" ] || [ "$(readlink "$dir/$item")" != "$MAIN/$item" ]; then
+         repaired+=("$item")
+      fi
+   done < <(list_shared_items)
+
+   if [ "${#repaired[@]}" -gt 0 ]; then
+      link_account "$dir" >/dev/null
+      jq -n --arg msg "claude-accounts repaired shared links in $dir: ${repaired[*]}" '{systemMessage: $msg}'
+   fi
+}
+
+# Runs a claude command against one account's config dir
+run_claude_in() {
+   local dir="$1"
+
+   shift
+   if [ "$dir" = "$MAIN" ]; then
+      env -u CLAUDE_CONFIG_DIR claude "$@"
+   else
+      CLAUDE_CONFIG_DIR="$dir" claude "$@"
+   fi
+}
+
+update_plugins_in() {
+   local dir="$1" path plugin installed="$1/plugins/installed_plugins.json"
+
+   echo "== $dir"
+   # Each account needs its own registration of a local-directory marketplace
+   while IFS= read -r path; do
+      if ! jq -e --arg p "$path" '[.. | strings] | index($p)' "$dir/plugins/known_marketplaces.json" >/dev/null 2>&1; then
+         run_claude_in "$dir" plugin marketplace add "$path"
+      fi
+   done < <(jq -r '.extraKnownMarketplaces // {} | .[].source | select(.source == "directory") | .path' "$MAIN/settings.json")
+
+   run_claude_in "$dir" plugin marketplace update
+   while IFS= read -r plugin; do
+      if [ -f "$installed" ] && jq -e --arg p "$plugin" '.plugins[$p]' "$installed" >/dev/null; then
+         run_claude_in "$dir" plugin update "$plugin"
+      else
+         run_claude_in "$dir" plugin install "$plugin"
+      fi
+   done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value) | .key' "$MAIN/settings.json")
+}
+
+# Updates plugins in the main account and every linked account
+update_all_plugins() {
+   local dir
+
+   update_plugins_in "$MAIN"
+   for dir in "$HOME"/.claude-*/; do
+      dir="${dir%/}"
+      if [ -f "$dir/.claude.json" ] && [ -L "$dir/settings.json" ]; then
+         update_plugins_in "$dir"
+      fi
+   done
+}
+
+main() {
+   local command="${1:-}" name="${2:-}"
+
+   if [ -n "$name" ] && [[ ! "$name" =~ ^[a-z0-9-]+$ ]]; then
+      die "account name must be lowercase letters, digits, or dashes"
+   fi
+
+   case "$command" in
+      link)
+         [ -n "${2:-}" ] || die "usage: claude-accounts link <name>"
+         link_account "$(get_account_dir "$2")"
+         ;;
+      sync)
+         [ -n "${2:-}" ] || die "usage: claude-accounts sync <name>"
+         sync_account "$(get_account_dir "$2")"
+         ;;
+      check)
+         check_account
+         ;;
+      update)
+         update_all_plugins
+         ;;
+      *)
+         die "usage: claude-accounts link|sync <name>, or claude-accounts check|update"
+         ;;
+   esac
+}
+
+main "$@"
