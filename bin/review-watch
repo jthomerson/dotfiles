@@ -8,6 +8,7 @@ set -euo pipefail
 CONFIG="${WT_CONFIG:-$HOME/code/.worktrees.json}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/review-watch"
 STATE="$STATE_DIR/state.json"
+LOCK="$STATE_DIR/lock"
 PROJECTS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
 RE_REVIEW_PROMPT="/re-review"
 
@@ -16,6 +17,7 @@ interval=120
 workspace_label="Reviews"
 seed=""
 once=""
+review_url=""
 dry_run=""
 username=""
 workspace_id=""
@@ -33,8 +35,13 @@ Every poll it lists the open merge requests assigned to me (other than my own) a
    * cleans up one that was merged or closed: closes its tab and removes its review
      worktree with `wt rm`
 
+Given a merge request URL, it does the same for that one merge request, right away, whether
+or not it's assigned to me: a fresh review, or a re-review if it already has a review
+session.
+
 USAGE
    review-watch [--host <gitlab host>] [options]
+   review-watch [--host <gitlab host>] [options] <merge request URL>
 
 OPTIONS
    --host <host>          GitLab host to poll (default: the one host glab is logged in to)
@@ -43,10 +50,13 @@ OPTIONS
                           (default: Reviews)
    --seed                 Record the merge requests assigned to me now as already
                           reviewed, without starting reviews, then exit
-   --once                 Poll once and exit
+   --once                 Poll once now and exit
    --dry-run              Log what would happen without touching Herdr, worktrees, or state
 
 State: ~/.local/state/review-watch/state.json
+
+A poll holds a lock, so --once and a URL run wait for a running watcher's poll to finish
+instead of racing it.
 EOF
 }
 
@@ -84,6 +94,40 @@ set_state() {
 delete_state() {
    jq --arg key "$1" 'del(.[$key])' "$STATE" > "$STATE.tmp"
    mv "$STATE.tmp" "$STATE"
+}
+
+# Waits for any other review-watch to finish its poll, then takes the lock. A lock left by
+# a process that no longer runs is taken over.
+acquire_lock() {
+   local waited=0 holder
+
+   until mkdir "$LOCK" 2> /dev/null; do
+      holder=$(cat "$LOCK/pid" 2> /dev/null || true)
+      if [ -n "$holder" ] && ! kill -0 "$holder" 2> /dev/null; then
+         rm -rf "${LOCK:?}"
+         continue
+      fi
+      [ "$waited" -lt 600 ] || die "another review-watch (pid ${holder:-unknown}) has held the lock for 10 minutes"
+      [ "$waited" -gt 0 ] || log "waiting for another review-watch to finish its poll"
+      sleep 1
+      waited=$((waited + 1))
+   done
+   echo $$ > "$LOCK/pid"
+}
+
+release_lock() {
+   if [ "$(cat "$LOCK/pid" 2> /dev/null)" = "$$" ]; then
+      rm -rf "${LOCK:?}"
+   fi
+}
+
+with_lock() {
+   local status=0
+
+   acquire_lock
+   "$@" || status=$?
+   release_lock
+   return "$status"
 }
 
 # --- Herdr ---------------------------------------------------------------------------
@@ -217,7 +261,10 @@ re_review() {
    local key="$1" url="$2" label="$3" author="$4" number="$5" agent="$6" project="$7" session tab pane dir opened
 
    session=$(find_review_session "$project" "$author" "$number" || true)
-   if [ -n "$dry_run" ]; then log "would re-review $label (session: ${session:-none})"; return; fi
+   if [ -n "$dry_run" ]; then
+      log "would $([ -n "$session" ] && echo "re-review $label in session $session" || echo "start a review of $label")"
+      return
+   fi
    if [ -z "$session" ]; then
       log "no earlier session found for $label; starting a fresh review"
       start_review "$key" "$url" "$label" "$agent"
@@ -307,18 +354,58 @@ clean_up() {
 
 # --- Polling -------------------------------------------------------------------------
 
+# The fields review-watch uses from a GitLab merge request object
+MR_FIELDS='{
+   key: "\(.project_id)!\(.iid)",
+   url: .web_url,
+   number: .iid,
+   author: .author.username,
+   title: (.title | sub("^(draft|wip):\\s*"; ""; "i")),
+   project: (.web_url | capture("^https?://[^/]+/(?<p>.+)/-/merge_requests/").p)
+}'
+
 # Prints one compact JSON line per open MR assigned to me, leaving out my own MRs
 list_assigned() {
    glab api --hostname "$host" --paginate \
       "merge_requests?scope=all&state=opened&assignee_username=$username&per_page=100" \
-      | jq -c --arg me "$username" '.[] | select(.author.username != $me) | {
-         key: "\(.project_id)!\(.iid)",
-         url: .web_url,
-         number: .iid,
-         author: .author.username,
-         title: (.title | sub("^(draft|wip):\\s*"; ""; "i")),
-         project: (.web_url | capture("^https?://[^/]+/(?<p>.+)/-/merge_requests/").p)
-      }'
+      | jq -c --arg me "$username" ".[] | select(.author.username != \$me) | $MR_FIELDS"
+}
+
+# Prints the same JSON line as list_assigned for the merge request at a URL
+get_mr_by_url() {
+   local url="$1" path project number json
+
+   [[ "$url" =~ ^https?://([^/]+)/(.+)/-/merge_requests/([0-9]+) ]] || die "not a merge request URL: $url"
+   [ "${BASH_REMATCH[1]}" = "$host" ] || die "$url isn't on $host (choose the host with --host)"
+   path="${BASH_REMATCH[2]}"
+   number="${BASH_REMATCH[3]}"
+   project=$(jq -rn --arg path "$path" '$path | @uri')
+   json=$(glab api --hostname "$host" "projects/$project/merge_requests/$number") || return 1
+   jq -c "$MR_FIELDS" <<< "$json"
+}
+
+# Prints "<tab label>\t<agent name>" for an MR line, e.g. "DPS 1234 esmith Fix the thing"
+describe_mr() {
+   local mr="$1" project number author alias
+
+   project=$(jq -r .project <<< "$mr")
+   number=$(jq -r .number <<< "$mr")
+   author=$(jq -r .author <<< "$mr")
+   alias=$(get_repo_alias "$project")
+   printf '%s\t%s\n' "$alias $number $author $(jq -r .title <<< "$mr")" "$(get_agent_name "$alias-$number-$author")"
+}
+
+# Given a URL: reviews one MR now. re_review resumes its review session if it has one, and
+# otherwise starts a fresh review.
+review_mr_url() {
+   local mr key label agent
+
+   mr=$(get_mr_by_url "$1") || die "couldn't read the merge request at $1"
+   key=$(jq -r .key <<< "$mr")
+   IFS=$'\t' read -r label agent <<< "$(describe_mr "$mr")"
+   set_state "$key" "$(jq '{url, project, number, author, assigned: true, rereviewPending: false}' <<< "$mr")"
+   re_review "$key" "$(jq -r .url <<< "$mr")" "$label" "$(jq -r .author <<< "$mr")" \
+      "$(jq -r .number <<< "$mr")" "$agent" "$(jq -r .project <<< "$mr")"
 }
 
 seed_state() {
@@ -332,7 +419,7 @@ seed_state() {
 }
 
 poll() {
-   local mrs mr key url number author project alias label agent known
+   local mrs mr key url number author project label agent known
 
    mrs=$(list_assigned)
    while IFS= read -r mr; do
@@ -342,9 +429,7 @@ poll() {
       number=$(jq -r .number <<< "$mr")
       author=$(jq -r .author <<< "$mr")
       project=$(jq -r .project <<< "$mr")
-      alias=$(get_repo_alias "$project")
-      label="$alias $number $author $(jq -r .title <<< "$mr")"
-      agent=$(get_agent_name "$alias-$number-$author")
+      IFS=$'\t' read -r label agent <<< "$(describe_mr "$mr")"
       known=$(jq -r --arg key "$key" 'has($key)' "$STATE")
 
       if [ "$known" = "false" ]; then
@@ -395,6 +480,7 @@ main() {
          --once) once=1; shift ;;
          --dry-run) dry_run=1; once=1; shift ;;
          -h|--help) usage; exit 0 ;;
+         http://*|https://*) review_url="$1"; once=1; shift ;;
          *) die "unknown option: $1 (see --help)" ;;
       esac
    done
@@ -416,15 +502,20 @@ main() {
    if [ -n "$dry_run" ]; then
       cp "$STATE" "$STATE_DIR/dry-run.json"
       STATE="$STATE_DIR/dry-run.json"
-      poll
+      if [ -n "$review_url" ]; then review_mr_url "$review_url"; else poll; fi
       rm -f "$STATE"
       exit 0
    fi
 
    workspace_id=$(get_workspace_id)
+   if [ -n "$review_url" ]; then
+      with_lock review_mr_url "$review_url"
+      exit $?
+   fi
+
    log "watching merge requests assigned to $username on $host every ${interval}s; tabs go in $workspace_label"
    while true; do
-      poll || log "poll failed; trying again next time"
+      with_lock poll || log "poll failed; trying again next time"
       [ -z "$once" ] || break
       sleep "$interval"
    done
