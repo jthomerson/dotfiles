@@ -1,0 +1,433 @@
+#!/usr/bin/env bash
+#
+# review-watch: poll GitLab for merge requests assigned to me and run their reviews in
+# Herdr. Run it in a pane of the reviews workspace. Run `review-watch --help` for usage.
+
+set -euo pipefail
+
+CONFIG="${WT_CONFIG:-$HOME/code/.worktrees.json}"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/review-watch"
+STATE="$STATE_DIR/state.json"
+PROJECTS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
+RE_REVIEW_PROMPT="/re-review"
+
+host=""
+interval=120
+workspace_label="Reviews"
+seed=""
+once=""
+dry_run=""
+username=""
+workspace_id=""
+
+usage() {
+   cat <<'EOF'
+review-watch: run code reviews for merge requests assigned to me, in Herdr
+
+Every poll it lists the open merge requests assigned to me (other than my own) and:
+
+   * starts a review for each one it hasn't seen: a new tab in the reviews workspace, with
+     Claude running `/code-review <url>`
+   * re-reviews one that was reassigned back to me: sends `/re-review` to its review
+     session, wherever that is open in Herdr, or resumes the session in a new tab
+   * cleans up one that was merged or closed: closes its tab and removes its review
+     worktree with `wt rm`
+
+USAGE
+   review-watch [--host <gitlab host>] [options]
+
+OPTIONS
+   --host <host>          GitLab host to poll (default: the one host glab is logged in to)
+   --interval <seconds>   Time between polls (default: 120)
+   --workspace <label>    Herdr workspace for review tabs, created if missing
+                          (default: Reviews)
+   --seed                 Record the merge requests assigned to me now as already
+                          reviewed, without starting reviews, then exit
+   --once                 Poll once and exit
+   --dry-run              Log what would happen without touching Herdr, worktrees, or state
+
+State: ~/.local/state/review-watch/state.json
+EOF
+}
+
+log() {
+   echo "$(date '+%F %T') $*"
+}
+
+die() {
+   echo "review-watch: $*" >&2
+   exit 1
+}
+
+# The one host glab is logged in to; with several, --host has to choose
+get_default_host() {
+   local hosts
+
+   hosts=$(glab auth status 2>&1 | grep -E '^[a-z0-9.-]+\.[a-z]+$' || true)
+   [ -n "$hosts" ] || die "glab is not logged in to any GitLab host"
+   [ "$(wc -l <<< "$hosts")" -eq 1 ] || die "glab is logged in to several hosts; choose one with --host"
+   echo "$hosts"
+}
+
+# --- State ---------------------------------------------------------------------------
+
+get_state() {
+   jq -r --arg key "$1" --arg field "$2" '.[$key][$field] // empty' "$STATE"
+}
+
+# Merges a JSON object into one merge request's entry
+set_state() {
+   jq --arg key "$1" --argjson fields "$2" '.[$key] = ((.[$key] // {}) + $fields)' "$STATE" > "$STATE.tmp"
+   mv "$STATE.tmp" "$STATE"
+}
+
+delete_state() {
+   jq --arg key "$1" 'del(.[$key])' "$STATE" > "$STATE.tmp"
+   mv "$STATE.tmp" "$STATE"
+}
+
+# --- Herdr ---------------------------------------------------------------------------
+
+get_workspace_id() {
+   local id
+
+   id=$(herdr workspace list | jq -r --arg label "$workspace_label" \
+      '[.result.workspaces[] | select(.label == $label) | .workspace_id] | first // empty')
+   if [ -z "$id" ]; then
+      id=$(herdr workspace create --cwd "$HOME/code" --label "$workspace_label" --no-focus \
+         | jq -r '.result.workspace.workspace_id')
+      log "created Herdr workspace $workspace_label ($id)"
+   fi
+   echo "$id"
+}
+
+get_agent_status() {
+   herdr agent list | jq -r --arg pane "$1" \
+      '[.result.agents[] | select(.pane_id == $pane) | .agent_status] | first // empty'
+}
+
+# The pane running a Claude session, in any workspace: prints "<tab id> <pane id>"
+get_session_pane() {
+   herdr agent list | jq -r --arg session "$1" \
+      '[.result.agents[] | select(.agent_session.value == $session) | "\(.tab_id) \(.pane_id)"] | first // empty'
+}
+
+# True when the pane is still open but nothing is running in it, so Claude can start there
+is_idle_pane() {
+   [ -n "$1" ] && herdr pane get "$1" > /dev/null 2>&1 && [ -z "$(get_agent_status "$1")" ]
+}
+
+# Opens a tab in a folder and starts Claude in it, passing any arguments through to
+# claude. Prints "<tab id> <pane id>".
+start_claude_tab() {
+   local label="$1" agent="$2" dir="$3" created started tab pane
+
+   shift 3
+   created=$(herdr tab create --workspace "$workspace_id" --cwd "$dir" --label "$label" --no-focus 2>&1)
+   tab=$(jq -r '.result.tab.tab_id // empty' <<< "$created" 2>/dev/null)
+   pane=$(jq -r '.result.root_pane.pane_id // empty' <<< "$created" 2>/dev/null)
+   if [ -z "$tab" ] || [ -z "$pane" ]; then
+      log "couldn't open a tab for $label: $created"
+      return 1
+   fi
+
+   # The new shell needs a moment to reach its prompt before Herdr can start the agent
+   sleep 2
+   if ! started=$(herdr agent start "$agent" --kind claude --pane "$pane" --timeout 60000 -- "$@" 2>&1); then
+      log "couldn't start Claude for $label: $started"
+      herdr tab close "$tab" > /dev/null 2>&1 || true
+      return 1
+   fi
+   echo "$tab $pane"
+}
+
+# The repo's alias from the worktrees config, uppercased (MPS), or else its name
+# (monetary-processing-services)
+get_repo_alias() {
+   local project="$1" code_root alias=""
+
+   if [ -f "$CONFIG" ]; then
+      code_root=$(jq -r '.codeRoot // "~/code"' "$CONFIG")
+      alias=$(jq -r --arg path "${code_root/#\~/$HOME}/$project" --arg home "$HOME" \
+         '[.repos // {} | to_entries[] | select((.value.path | sub("^~"; $home)) == $path) | .key] | first // empty' \
+         "$CONFIG")
+   fi
+   if [ -n "$alias" ]; then
+      tr '[:lower:]' '[:upper:]' <<< "$alias"
+   else
+      basename "$project"
+   fi
+}
+
+# Herdr agent names allow only lowercase letters, digits, - and _, up to 32 characters
+get_agent_name() {
+   local name
+
+   name=$(tr '[:upper:]' '[:lower:]' <<< "$1" | tr -c 'a-z0-9_\n-' '-')
+   echo "${name:0:32}"
+}
+
+# --- Reviews -------------------------------------------------------------------------
+
+start_review() {
+   local key="$1" url="$2" label="$3" agent="$4" opened tab pane
+
+   if [ -n "$dry_run" ]; then log "would start a review of $label ($url)"; return; fi
+   opened=$(start_claude_tab "$label" "$agent" "$HOME/code") || return 1
+   read -r tab pane <<< "$opened"
+   herdr agent prompt "$pane" "/code-review $url" > /dev/null || { log "couldn't send /code-review to $label"; return 1; }
+   set_state "$key" "$(jq -n --arg tab "$tab" --arg pane "$pane" --arg label "$label" \
+      '{tab: $tab, pane: $pane, label: $label, assigned: true, rereviewPending: false}')"
+   log "started review of $label in tab $tab"
+}
+
+get_worktree_root() {
+   local root
+
+   root=$(jq -r '.root // "~/code/worktrees"' "$CONFIG" 2>/dev/null || echo "~/code/worktrees")
+   echo "${root/#\~/$HOME}"
+}
+
+# Finds the review session the naming hook titled review-<author>-<number>-... that worked
+# in this project's review worktree, since the same author can have the same MR number in
+# another project
+find_review_session() {
+   local project="$1" author="$2" number="$3" title worktree transcript
+
+   title="\"customTitle\":\"review-$author-$number-"
+   worktree="\"cwd\":\"$(get_worktree_root)/$project/review-$author-$number-"
+   transcript=$(grep -l -s -F "$title" "$PROJECTS"/*/*.jsonl \
+      | while IFS= read -r file; do
+         if grep -q -F "$worktree" "$file"; then echo "$(/usr/bin/stat -f %m "$file") $file"; fi
+      done \
+      | sort -rn | head -1 | cut -d" " -f2-)
+   [ -n "$transcript" ] && basename "$transcript" .jsonl
+}
+
+list_review_worktrees() {
+   local project="$1" number="$2"
+
+   find "$(get_worktree_root)/$project" -mindepth 1 -maxdepth 1 -type d -name "review-*-$number-*" 2>/dev/null
+}
+
+# Sends the re-review to the review's own session, wherever it is: to the pane already
+# running it (in any workspace, so reviews started by hand count too), or else resumed in
+# its old pane if that is open and idle, or else resumed in a new tab
+re_review() {
+   local key="$1" url="$2" label="$3" author="$4" number="$5" agent="$6" project="$7" session tab pane dir opened
+
+   session=$(find_review_session "$project" "$author" "$number" || true)
+   if [ -n "$dry_run" ]; then log "would re-review $label (session: ${session:-none})"; return; fi
+   if [ -z "$session" ]; then
+      log "no earlier session found for $label; starting a fresh review"
+      start_review "$key" "$url" "$label" "$agent"
+      return
+   fi
+
+   read -r tab pane <<< "$(get_session_pane "$session")"
+   if [ -n "$pane" ]; then
+      if [ "$(get_agent_status "$pane")" = "blocked" ]; then
+         set_state "$key" '{"rereviewPending": true}'
+         log "re-review of $label waits: its agent is blocked on a question in tab $tab"
+         return
+      fi
+      herdr agent prompt "$pane" "$RE_REVIEW_PROMPT" > /dev/null
+      set_state "$key" '{"rereviewPending": false}'
+      log "sent re-review of $label to its session in tab $tab"
+      return
+   fi
+
+   dir=$(list_review_worktrees "$project" "$number" | head -1)
+   dir="${dir:-$HOME/code}"
+   pane=$(get_state "$key" pane)
+   if is_idle_pane "$pane"; then
+      herdr pane run "$pane" "cd $(printf '%q' "$dir")" > /dev/null
+      if ! herdr agent start "$agent" --kind claude --pane "$pane" --timeout 60000 -- --resume "$session" > /dev/null 2>&1; then
+         set_state "$key" '{"rereviewPending": true}'
+         log "couldn't resume $label in its old tab; will retry"
+         return 1
+      fi
+      herdr agent prompt "$pane" "$RE_REVIEW_PROMPT" > /dev/null
+      set_state "$key" '{"rereviewPending": false}'
+      log "resumed $label (session $session) in its old tab for a re-review"
+      return
+   fi
+
+   opened=$(start_claude_tab "$label" "$agent" "$dir" --resume "$session") || {
+      set_state "$key" '{"rereviewPending": true}'
+      return 1
+   }
+   read -r tab pane <<< "$opened"
+   herdr agent prompt "$pane" "$RE_REVIEW_PROMPT" > /dev/null
+   set_state "$key" "$(jq -n --arg tab "$tab" --arg pane "$pane" --arg label "$label" \
+      '{tab: $tab, pane: $pane, label: $label, rereviewPending: false}')"
+   log "resumed $label (session $session) in tab $tab for a re-review"
+}
+
+# Renames an open review tab, and its agent, when its label is out of date (for example,
+# the MR's title changed)
+update_tab_label() {
+   local key="$1" label="$2" agent="$3" tab pane
+
+   tab=$(get_state "$key" tab)
+   pane=$(get_state "$key" pane)
+   [ -n "$tab" ] && [ "$(get_state "$key" label)" != "$label" ] || return 0
+   if [ -n "$dry_run" ]; then log "would rename tab $tab to $label"; return; fi
+
+   herdr tab rename "$tab" "$label" > /dev/null 2>&1 || return 0
+   herdr agent rename "$pane" "$agent" > /dev/null 2>&1 || true
+   set_state "$key" "$(jq -n --arg label "$label" '{label: $label}')"
+   log "renamed tab $tab to $label"
+}
+
+# Closes a finished review's tab and removes its worktree
+clean_up() {
+   local key="$1" label="$2" project="$3" number="$4" tab worktree failed=""
+
+   if [ -n "$dry_run" ]; then log "would clean up $label"; return; fi
+   tab=$(get_state "$key" tab)
+   if [ -n "$tab" ]; then
+      herdr tab close "$tab" > /dev/null 2>&1 || true
+   fi
+
+   while IFS= read -r worktree; do
+      if wt rm "$worktree" >/dev/null 2>&1; then
+         log "removed $worktree"
+      else
+         failed=1
+         log "kept $worktree: wt rm refused (run \`wt rm\` there to see why)"
+      fi
+   done < <(list_review_worktrees "$project" "$number")
+
+   if [ -z "$failed" ]; then
+      delete_state "$key"
+      log "cleaned up $label"
+   fi
+}
+
+# --- Polling -------------------------------------------------------------------------
+
+# Prints one compact JSON line per open MR assigned to me, leaving out my own MRs
+list_assigned() {
+   glab api --hostname "$host" --paginate \
+      "merge_requests?scope=all&state=opened&assignee_username=$username&per_page=100" \
+      | jq -c --arg me "$username" '.[] | select(.author.username != $me) | {
+         key: "\(.project_id)!\(.iid)",
+         url: .web_url,
+         number: .iid,
+         author: .author.username,
+         title: (.title | sub("^(draft|wip):\\s*"; ""; "i")),
+         project: (.web_url | capture("^https?://[^/]+/(?<p>.+)/-/merge_requests/").p)
+      }'
+}
+
+seed_state() {
+   local mr key
+
+   while IFS= read -r mr; do
+      key=$(jq -r .key <<< "$mr")
+      set_state "$key" "$(jq '{url, project, number, author, assigned: true, rereviewPending: false}' <<< "$mr")"
+      log "seeded $(jq -r '"\(.author) !\(.number)"' <<< "$mr")"
+   done < <(list_assigned)
+}
+
+poll() {
+   local mrs mr key url number author project alias label agent known
+
+   mrs=$(list_assigned)
+   while IFS= read -r mr; do
+      [ -n "$mr" ] || continue
+      key=$(jq -r .key <<< "$mr")
+      url=$(jq -r .url <<< "$mr")
+      number=$(jq -r .number <<< "$mr")
+      author=$(jq -r .author <<< "$mr")
+      project=$(jq -r .project <<< "$mr")
+      alias=$(get_repo_alias "$project")
+      label="$alias $number $author $(jq -r .title <<< "$mr")"
+      agent=$(get_agent_name "$alias-$number-$author")
+      known=$(jq -r --arg key "$key" 'has($key)' "$STATE")
+
+      if [ "$known" = "false" ]; then
+         set_state "$key" "$(jq '{url, project, number, author}' <<< "$mr")"
+         if ! start_review "$key" "$url" "$label" "$agent"; then
+            # Forget it, so the next poll tries again
+            delete_state "$key"
+            log "failed to start review of $label; will retry"
+         fi
+      elif [ "$(get_state "$key" assigned)" = "false" ] || [ "$(get_state "$key" rereviewPending)" = "true" ]; then
+         set_state "$key" '{"assigned": true}'
+         re_review "$key" "$url" "$label" "$author" "$number" "$agent" "$project" || log "failed to re-review $label"
+      else
+         update_tab_label "$key" "$label" "$agent"
+      fi
+   done <<< "$mrs"
+
+   # Anything I was assigned that's no longer in the list was reassigned, merged, or closed
+   while IFS= read -r key; do
+      [ -n "$key" ] || continue
+      if ! grep -q "\"key\":\"$key\"" <<< "$mrs"; then
+         set_state "$key" '{"assigned": false}'
+      fi
+   done < <(jq -r 'to_entries[] | select(.value.assigned == true) | .key' "$STATE")
+
+   while IFS= read -r key; do
+      [ -n "$key" ] || continue
+      check_finished "$key" || log "failed to check $(get_state "$key" url)"
+   done < <(jq -r 'to_entries[] | select(.value.assigned == false) | .key' "$STATE")
+}
+
+check_finished() {
+   local key="$1" project_id="${1%%!*}" number="${1##*!}" mr_state
+
+   mr_state=$(glab api --hostname "$host" "projects/$project_id/merge_requests/$number" | jq -r .state)
+   if [ "$mr_state" = "merged" ] || [ "$mr_state" = "closed" ]; then
+      clean_up "$key" "$(get_state "$key" author) !$number" "$(get_state "$key" project)" "$number"
+   fi
+}
+
+main() {
+   while [ $# -gt 0 ]; do
+      case "$1" in
+         --host) host="$2"; shift 2 ;;
+         --interval) interval="$2"; shift 2 ;;
+         --workspace) workspace_label="$2"; shift 2 ;;
+         --seed) seed=1; shift ;;
+         --once) once=1; shift ;;
+         --dry-run) dry_run=1; once=1; shift ;;
+         -h|--help) usage; exit 0 ;;
+         *) die "unknown option: $1 (see --help)" ;;
+      esac
+   done
+   host="${host:-$(get_default_host)}"
+   for program in glab herdr jq wt; do
+      command -v "$program" > /dev/null || die "$program is not on PATH"
+   done
+
+   mkdir -p "$STATE_DIR"
+   [ -f "$STATE" ] || echo '{}' > "$STATE"
+   username=$(glab api --hostname "$host" user | jq -r .username)
+   [ -n "$username" ] || die "glab is not logged in to $host"
+
+   if [ -n "$seed" ]; then
+      seed_state
+      exit 0
+   fi
+
+   if [ -n "$dry_run" ]; then
+      cp "$STATE" "$STATE_DIR/dry-run.json"
+      STATE="$STATE_DIR/dry-run.json"
+      poll
+      rm -f "$STATE"
+      exit 0
+   fi
+
+   workspace_id=$(get_workspace_id)
+   log "watching merge requests assigned to $username on $host every ${interval}s; tabs go in $workspace_label"
+   while true; do
+      poll || log "poll failed; trying again next time"
+      [ -z "$once" ] || break
+      sleep "$interval"
+   done
+}
+
+main "$@"
