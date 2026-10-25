@@ -470,6 +470,21 @@ curl -fsSL https://claude.ai/install.sh | bash
 
 This installs to `~/.local/bin/claude`, which is already on `PATH` via `~/.zshrc`.
 
+#### Grilling skills
+
+Matt Pocock's `grill-me` skill has Claude interview me in rounds of numbered questions,
+each with a recommended answer, until a plan has no unstated assumptions. `grill-me` only
+triggers his `grilling` skill, so link both. They come from his skills repo, which is also
+a plugin, but the plugin brings dozens of other skills that overlap the ones I use:
+
+```bash
+git clone https://github.com/mattpocock/skills.git ~/code/random/mattpocock-skills
+ln -sfn ~/code/random/mattpocock-skills/skills/productivity/grilling ~/.claude/skills/grilling
+ln -sfn ~/code/random/mattpocock-skills/skills/productivity/grill-me ~/.claude/skills/grill-me
+```
+
+Update them with `git -C ~/code/random/mattpocock-skills pull`.
+
 
 ### Install and Configure Herdr
 
