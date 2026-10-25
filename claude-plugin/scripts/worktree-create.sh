@@ -16,10 +16,19 @@ WT="$(command -v wt || echo "$HOME/code/jthomerson/dotfiles/bin/wt")"
 CONFIG="${WT_CONFIG:-$HOME/code/.worktrees.json}"
 REQUESTS="${XDG_CACHE_HOME:-$HOME/.cache}/wt/requests"
 
+LOG="${XDG_CACHE_HOME:-$HOME/.cache}/wt/hooks.log"
+
+# Every call is logged, because Claude shows little when a worktree hook fails or is skipped
+log() {
+   mkdir -p "$(dirname "$LOG")"
+   echo "$(date "+%F %T") $(basename "$0"): $*" >> "$LOG"
+}
+
 main() {
    local input name cwd request repo branch prefix=""
 
    input=$(cat)
+   log "called with $(jq -c 'del(.transcript_path)' <<< "$input")"
    name=$(jq -r '.name // empty' <<< "$input")
    cwd=$(jq -r '.cwd // empty' <<< "$input")
    [ -n "$name" ] || { echo "worktree-create: no worktree name in hook input" >&2; exit 1; }
