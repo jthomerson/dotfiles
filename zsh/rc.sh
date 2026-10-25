@@ -13,6 +13,10 @@ export JQ_COLORS="0;33"
 
 source "${SCRIPT_DIR}/path.sh"
 
+# Pin emacs keys (e.g. Ctrl-R history search). Otherwise zsh starts in vi mode whenever
+# it inherits an EDITOR containing "vi", as shells spawned by herdr's server did.
+bindkey -e
+
 # cd into a directory by name
 setopt autocd
 
