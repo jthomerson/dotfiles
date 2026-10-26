@@ -527,6 +527,12 @@ Key bindings:
    * Everything else is Herdr's default. Press `ctrl+b` then `?` for the list, or run
      `herdr --default-config` to see every binding.
 
+`start-work` (in this repo's `bin`) starts work on a branch: it creates the worktree with
+`wt new` and opens it as a Herdr workspace nested under its repo's workspace, with Claude
+on the left (in a session named after the workspace) and two shells stacked on the right.
+It takes the same arguments as `wt new` plus `--label` for the workspace name, and asks for
+whatever is missing; `start-work --help` has the details.
+
 `review-watch` (in this repo's `bin`) runs code reviews for merge requests assigned to me
 in Herdr tabs. Start it in a pane of the Reviews workspace; `review-watch --help` has the
 details.

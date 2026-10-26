@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+#
+# start-work: create a worktree with `wt new` and open it as a Herdr workspace, nested
+# under its repo's workspace. Run `start-work --help` for usage.
+
+set -euo pipefail
+
+usage() {
+   cat <<'EOF'
+start-work: create a worktree and open it in Herdr
+
+Creates the worktree with `wt new` (or reuses it, if it already exists) and opens it as a
+Herdr workspace under its repo's workspace, then focuses it. Its tab gets Claude on the
+left, in a session named after the workspace, and two shells on the right, one above the
+other. If the worktree is already open in Herdr, it focuses that workspace instead.
+
+USAGE
+   start-work [<repo> <branch>] [--label <name>] [--base <ref>] [--name <name>]
+
+   Asks for anything missing: the repo (blank for the current directory's), the branch,
+   and the workspace name. With all three given, it asks nothing.
+
+OPTIONS
+   --label <name>   Workspace name (default: offered from the branch, e.g.
+                    jdoe/add-login -> "Add Login")
+   --base, --name   Passed through to `wt new`; see `wt --help`
+EOF
+}
+
+die() {
+   echo "start-work: $*" >&2
+   exit 1
+}
+
+# Asks a question in a terminal, offering a default. Prints the answer.
+ask() {
+   local question="$1" default="${2:-}" answer
+
+   [ -t 0 ] || die "no terminal to ask for \"$question\"; pass it as an argument (see --help)"
+   if [ -n "$default" ]; then
+      read -r -p "$question [$default]: " answer
+   else
+      read -r -p "$question: " answer
+   fi
+   echo "${answer:-$default}"
+}
+
+# "jdoe/add-login_page" -> "Add Login Page"
+get_default_label() {
+   local name="${1##*/}"
+
+   tr '_-' '  ' <<< "$name" | awk '{ for (i = 1; i <= NF; i++) { $i = toupper(substr($i, 1, 1)) substr($i, 2) } print }'
+}
+
+# Creates the worktree, or finds it if `wt new` says it already exists. Prints its path.
+get_worktree() {
+   local errors path status=0
+
+   errors=$(mktemp)
+   # Shows wt's progress, but not its "already exists" error, which here just means reuse
+   path=$(wt new "$@" 2> >(tee "$errors" | grep -v " already exists$" >&2)) || status=$?
+   if [ "$status" -ne 0 ]; then
+      path=$(sed -n 's/^wt: \(.*\) already exists$/\1/p' "$errors")
+   fi
+   rm -f "$errors"
+   [ -n "$path" ] || die "wt new failed"
+   echo "$path"
+}
+
+# The Herdr workspace already showing a worktree, if any
+get_open_workspace() {
+   herdr worktree list --cwd "$1" \
+      | jq -r --arg path "$1" '[.result.worktrees[] | select(.path == $path) | .open_workspace_id // empty] | first // empty'
+}
+
+# Herdr agent names allow only lowercase letters, digits, - and _, up to 32 characters
+get_agent_name() {
+   local name
+
+   name=$(tr '[:upper:]' '[:lower:]' <<< "$1" | tr -c 'a-z0-9_\n-' '-')
+   echo "${name:0:32}"
+}
+
+# Splits the workspace's first pane into Claude on the left and two shells on the right,
+# one above the other, then starts Claude there with the workspace's name as its session
+# name
+set_up_panes() {
+   local workspace="$1" label="$2" claude_pane right_pane
+
+   claude_pane=$(herdr pane list --workspace "$workspace" | jq -r '.result.panes[0].pane_id')
+   right_pane=$(herdr pane split "$claude_pane" --direction right --no-focus | jq -r '.result.pane.pane_id')
+   herdr pane split "$right_pane" --direction down --no-focus > /dev/null
+
+   # The new shell needs a moment to reach its prompt before Herdr can start Claude
+   sleep 2
+   herdr agent start "$(get_agent_name "$label")" --kind claude --pane "$claude_pane" --timeout 60000 \
+      -- --name "$label" > /dev/null || die "couldn't start Claude in $label"
+   echo "Started Claude in $label"
+}
+
+main() {
+   local repo="" branch="" label="" wt_options=() path workspace main_clone
+
+   while [ $# -gt 0 ]; do
+      case "$1" in
+         --label) label="$2"; shift 2 ;;
+         --base|--name) wt_options+=("$1" "$2"); shift 2 ;;
+         -h|--help) usage; exit 0 ;;
+         -*) die "unknown option: $1 (see --help)" ;;
+         *)
+            if [ -z "$repo" ]; then
+               repo="$1"
+            elif [ -z "$branch" ]; then
+               branch="$1"
+            else
+               die "too many arguments (see --help)"
+            fi
+            shift
+            ;;
+      esac
+   done
+   for program in wt herdr jq; do
+      command -v "$program" > /dev/null || die "$program is not on PATH"
+   done
+
+   # A single argument is the branch, in the current directory's repo
+   if [ -n "$repo" ] && [ -z "$branch" ]; then
+      branch="$repo"
+      repo=""
+   fi
+   if [ -z "$branch" ]; then
+      repo=$(ask "Repo (alias or path; blank for this directory's)" "$repo")
+      branch=$(ask "Branch")
+   fi
+   [ -n "$branch" ] || die "a branch is required"
+   label="${label:-$(ask "Workspace name" "$(get_default_label "$branch")")}"
+
+   # wt finds the repo from any folder in it, so a blank repo is this directory's
+   path=$(get_worktree "${repo:-$PWD}" "$branch" ${wt_options[@]+"${wt_options[@]}"})
+   workspace=$(get_open_workspace "$path")
+   if [ -n "$workspace" ]; then
+      herdr workspace focus "$workspace" > /dev/null
+      echo "Focused the workspace already open at $path"
+      return
+   fi
+   # Herdr opens a worktree only from its repo's main clone, and nests the workspace under
+   # that clone's workspace
+   main_clone=$(dirname "$(git -C "$path" rev-parse --path-format=absolute --git-common-dir)")
+   workspace=$(herdr worktree open --cwd "$main_clone" --path "$path" --label "$label" --focus \
+      | jq -r '.result.workspace.workspace_id')
+   echo "Opened $label at $path"
+   set_up_panes "$workspace" "$label"
+}
+
+main "$@"
