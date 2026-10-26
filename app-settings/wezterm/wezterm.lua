@@ -63,9 +63,9 @@ config = {
       { key = "d", mods = "CMD|SHIFT", action = act.SplitPane({ direction = "Down" }) },
 
       -- iTerm2-style pane navigation
-      -- Cmd+[ / Cmd+]: cycle through panes
-      { key = "[", mods = "CMD", action = act.ActivatePaneDirection("Prev") },
-      { key = "]", mods = "CMD", action = act.ActivatePaneDirection("Next") },
+      -- Cmd+[ / Cmd+]: cycle through panes, or Herdr's tabs (prefix, p / n)
+      { key = "[", mods = "CMD", action = herdr_or("p", act.ActivatePaneDirection("Prev")) },
+      { key = "]", mods = "CMD", action = herdr_or("n", act.ActivatePaneDirection("Next")) },
       -- Cmd+Arrow or Cmd+Opt+Arrow: navigate to adjacent pane directionally
       { key = "LeftArrow",  mods = "CMD",     action = navigate_pane("Left", "h") },
       { key = "RightArrow", mods = "CMD",     action = navigate_pane("Right", "l") },

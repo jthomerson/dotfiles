@@ -510,6 +510,8 @@ Key bindings:
      you rebind them in `config.toml`, update `wezterm.lua` to match.
    * Cmd+Shift+Return zooms the Herdr pane, the same way: `wezterm.lua` sends `ctrl+b`
      then `z`.
+   * Cmd+] and Cmd+[ go to the next and previous Herdr tab, the same way: `wezterm.lua`
+     sends `ctrl+b` then `n` or `p`.
    * Everything else is Herdr's default. Press `ctrl+b` then `?` for the list, or run
      `herdr --default-config` to see every binding.
 
