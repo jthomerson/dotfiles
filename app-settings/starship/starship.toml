@@ -83,7 +83,7 @@ symbol = '󰏗 '
 
 [custom.env_group_prd]
 when = '[ -n "$ENV_GROUP" ] && echo "$ENV_GROUP" | grep -q "prd"'
-command = 'echo "‼️ $ENV_GROUP ‼️"'
+command = 'echo "‼ $ENV_GROUP ‼"'
 style = 'bold fg:bright-red'
 format = '[$output]($style) '
 
