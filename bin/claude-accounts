@@ -22,7 +22,7 @@ BACKUP_ROOT="$HOME/.claude-backup-accounts"
 # Everything else in an account dir (login state, daemon, sessions, jobs, caches, plugins,
 # and org policy files) stays per account.
 SHARED_DIRS=(projects rules skills commands agents hooks output-styles file-history paste-cache
-   image-cache plans tasks todos uploads teams markdown-formatting bin)
+   image-cache plans tasks todos uploads teams bin)
 SHARED_FILES=(CLAUDE.md settings.json keybindings.json history.jsonl)
 
 die() {
