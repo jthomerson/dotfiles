@@ -486,6 +486,14 @@ ln -sfn ~/code/random/mattpocock-skills/skills/productivity/grill-me ~/.claude/s
 Update them with `git -C ~/code/random/mattpocock-skills pull`.
 
 
+#### Status line
+
+`bin/claude-statusline` shows the account, the model, how much of the context is used, and
+how much of the 5-hour and 7-day usage limits is gone, with when each resets. The account
+is the config dir's name without `.claude-`, or "Default account" for `~/.claude`. The
+`statusLine` setting in my `settings.json` (in agentic-ai-workflows) runs it.
+
+
 ### Install and Configure Herdr
 
 [Herdr][herdr] is the terminal workspace manager the Claude sessions run in: a workspace

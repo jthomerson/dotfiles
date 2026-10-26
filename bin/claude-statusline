@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# Claude Code status line: the account, the model, how much of the context is used, and
+# how much of the 5-hour and 7-day usage limits is gone, with when each resets. Claude Code
+# runs it with the session's JSON on stdin.
+
+set -euo pipefail
+
+input=$(cat)
+
+get_field() {
+   jq -r "$1 // empty" <<< "$input"
+}
+
+# Green under 50%, yellow under 80%, red from there
+color_percent() {
+   local percent="$1"
+
+   if [ "$percent" -ge 80 ]; then
+      printf '\033[31m%s%%\033[0m' "$percent"
+      return
+   fi
+   if [ "$percent" -ge 50 ]; then
+      printf '\033[33m%s%%\033[0m' "$percent"
+      return
+   fi
+   printf '\033[32m%s%%\033[0m' "$percent"
+}
+
+# " · 5h 23% (resets 3:10pm)", or nothing when the account has no such limit
+describe_limit() {
+   local label="$1" window="$2" format="$3" percent resets_at
+
+   percent=$(get_field ".rate_limits.$window.used_percentage")
+   resets_at=$(get_field ".rate_limits.$window.resets_at")
+   [ -n "$percent" ] || return 0
+   printf ' · %s %s' "$label" "$(color_percent "${percent%.*}")"
+   if [ -n "$resets_at" ]; then
+      printf ' (resets %s)' "$(/bin/date -r "$resets_at" "+$format" | sed 's/AM$/am/; s/PM$/pm/')"
+   fi
+}
+
+main() {
+   local account model context
+
+   # The config dir's name without ".claude-": ~/.claude-work is "work", and
+   # ~/.claude itself is the default account
+   account=$(basename "${CLAUDE_CONFIG_DIR:-$HOME/.claude}")
+   account="${account#.claude}"
+   account="${account#-}"
+   account="${account:-Default account}"
+   model=$(get_field .model.display_name)
+   context=$(get_field .context_window.used_percentage)
+
+   printf '%s · %s' "$account" "${model:-?}"
+   if [ -n "$context" ]; then
+      printf ' · ctx %s' "$(color_percent "${context%.*}")"
+   fi
+   describe_limit 5h five_hour '%-I:%M%p'
+   describe_limit 7d seven_day '%a %-I%p'
+   echo
+}
+
+main
