@@ -2,3 +2,7 @@ onboarding = false
 
 [ui]
 status_indicators = "dots"
+
+# Notify through macOS (terminal-notifier), so it works in any terminal, not just WezTerm
+[ui.toast]
+delivery = "system"

@@ -485,7 +485,6 @@ ln -sfn ~/code/random/mattpocock-skills/skills/productivity/grill-me ~/.claude/s
 
 Update them with `git -C ~/code/random/mattpocock-skills pull`.
 
-
 #### Status line
 
 `bin/claude-statusline` shows the account, the model, how much of the context is used, and
@@ -500,7 +499,7 @@ is the config dir's name without `.claude-`, or "Default account" for `~/.claude
 per repo, with a tab per worktree or review. It runs inside WezTerm.
 
 ```bash
-brew install herdr
+brew install herdr terminal-notifier
 mkdir -p ~/.config/herdr
 ln -sfn ~/code/jthomerson/dotfiles/app-settings/herdr/config.toml ~/.config/herdr/config.toml
 herdr integration install claude
@@ -509,6 +508,11 @@ herdr integration install claude
 The Claude integration installs a hook script in `~/.claude/hooks` and registers it as a
 `SessionStart` hook in `~/.claude/settings.json`, so Herdr can show each Claude session's
 state. Check it with `herdr integration status`.
+
+Notifications go through macOS (`delivery = "system"` in `config.toml`), so they work in
+any terminal. Herdr sends them with `terminal-notifier`, which needs permission: allow it
+in System Settings → Notifications. Herdr notifies when an agent in another tab finishes
+or needs me, and `ctrl+b` then `o` jumps to that agent.
 
 Key bindings:
 
