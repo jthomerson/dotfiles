@@ -516,14 +516,14 @@ or needs me, and `ctrl+b` then `o` jumps to that agent.
 
 Key bindings:
 
-   * Cmd+Arrow moves between panes. WezTerm would otherwise take the keystroke, so
-     `wezterm.lua` sends Herdr's pane-focus keys (its `ctrl+b` prefix, then h/j/k/l)
-     whenever the focused WezTerm pane is running Herdr. Those are Herdr's defaults; if
-     you rebind them in `config.toml`, update `wezterm.lua` to match.
-   * Cmd+Shift+Return zooms the Herdr pane, the same way: `wezterm.lua` sends `ctrl+b`
-     then `z`.
-   * Cmd+] and Cmd+[ go to the next and previous Herdr tab, the same way: `wezterm.lua`
-     sends `ctrl+b` then `n` or `p`.
+   * `config.toml` binds Cmd+Arrow (or Cmd+Opt+Arrow) to move between panes, Cmd+[ and
+     Cmd+] to go to the previous and next tab, and Cmd+Shift+Return to zoom the pane.
+     Each keeps Herdr's default `ctrl+b` key too, which works in any terminal.
+   * Cmd keys reach Herdr only when the terminal sends them with the kitty keyboard
+     protocol. In WezTerm that's `enable_kitty_keyboard`. WezTerm uses these same keys for
+     its own panes, so `wezterm.lua` passes each one on to Herdr, as its kitty code,
+     whenever the focused WezTerm pane is running Herdr. Another terminal needs the
+     protocol turned on and its own Cmd shortcuts for these keys turned off.
    * Everything else is Herdr's default. Press `ctrl+b` then `?` for the list, or run
      `herdr --default-config` to see every binding.
 

@@ -10,31 +10,34 @@ if not ok then
    local_config = {}
 end
 
--- WezTerm takes Cmd keys before Herdr sees them, so when the pane is running Herdr, send
--- Herdr's own key for the same thing (its prefix, then the key) instead of the WezTerm action
-local function herdr_or(herdr_key, wezterm_action)
+-- Herdr binds these Cmd keys itself (see herdr/config.toml), but WezTerm uses them too, so
+-- when the pane is running Herdr, pass the key on as its kitty keyboard protocol code.
+-- SendKey would drop the Cmd.
+local function herdr_or(kitty_code, wezterm_action)
    return wezterm.action_callback(function(window, pane)
       local process = pane:get_foreground_process_name() or ""
 
       if process:match("herdr$") then
-         window:perform_action(act.Multiple({
-            act.SendKey({ key = "b", mods = "CTRL" }),
-            act.SendKey({ key = herdr_key }),
-         }), pane)
+         window:perform_action(act.SendString(kitty_code), pane)
          return
       end
       window:perform_action(wezterm_action, pane)
    end)
 end
 
-local function navigate_pane(direction, herdr_key)
-   return herdr_or(herdr_key, act.ActivatePaneDirection(direction))
+-- The kitty code for Cmd+arrow, or Cmd+Opt+arrow: modifier 9 is Cmd, 11 is Cmd+Opt
+local function navigate_pane(direction, modifier)
+   local arrow_codes = { Left = "D", Right = "C", Up = "A", Down = "B" }
+
+   return herdr_or("\x1b[1;" .. modifier .. arrow_codes[direction], act.ActivatePaneDirection(direction))
 end
 
 config = wezterm.config_builder()
 
 config = {
    automatically_reload_config = true,
+   -- Lets Herdr see Cmd keys; only programs that ask for the protocol get it
+   enable_kitty_keyboard = true,
    -- Treat Option as Alt (not macOS compose) so Alt-based keybindings reach
    -- the terminal, e.g. Helix A-r/A-w reflow. Gives up special-char composition.
    send_composed_key_when_left_alt_is_pressed = false,
@@ -63,20 +66,20 @@ config = {
       { key = "d", mods = "CMD|SHIFT", action = act.SplitPane({ direction = "Down" }) },
 
       -- iTerm2-style pane navigation
-      -- Cmd+[ / Cmd+]: cycle through panes, or Herdr's tabs (prefix, p / n)
-      { key = "[", mods = "CMD", action = herdr_or("p", act.ActivatePaneDirection("Prev")) },
-      { key = "]", mods = "CMD", action = herdr_or("n", act.ActivatePaneDirection("Next")) },
+      -- Cmd+[ / Cmd+]: cycle through panes, or Herdr's tabs
+      { key = "[", mods = "CMD", action = herdr_or("\x1b[91;9u", act.ActivatePaneDirection("Prev")) },
+      { key = "]", mods = "CMD", action = herdr_or("\x1b[93;9u", act.ActivatePaneDirection("Next")) },
       -- Cmd+Arrow or Cmd+Opt+Arrow: navigate to adjacent pane directionally
-      { key = "LeftArrow",  mods = "CMD",     action = navigate_pane("Left", "h") },
-      { key = "RightArrow", mods = "CMD",     action = navigate_pane("Right", "l") },
-      { key = "UpArrow",    mods = "CMD",     action = navigate_pane("Up", "k") },
-      { key = "DownArrow",  mods = "CMD",     action = navigate_pane("Down", "j") },
-      { key = "LeftArrow",  mods = "CMD|OPT", action = navigate_pane("Left", "h") },
-      { key = "RightArrow", mods = "CMD|OPT", action = navigate_pane("Right", "l") },
-      { key = "UpArrow",    mods = "CMD|OPT", action = navigate_pane("Up", "k") },
-      { key = "DownArrow",  mods = "CMD|OPT", action = navigate_pane("Down", "j") },
-      -- Cmd+Shift+Enter: toggle pane zoom (full-screen within window), or Herdr's (prefix, z)
-      { key = "Enter", mods = "CMD|SHIFT", action = herdr_or("z", act.TogglePaneZoomState) },
+      { key = "LeftArrow",  mods = "CMD",     action = navigate_pane("Left", 9) },
+      { key = "RightArrow", mods = "CMD",     action = navigate_pane("Right", 9) },
+      { key = "UpArrow",    mods = "CMD",     action = navigate_pane("Up", 9) },
+      { key = "DownArrow",  mods = "CMD",     action = navigate_pane("Down", 9) },
+      { key = "LeftArrow",  mods = "CMD|OPT", action = navigate_pane("Left", 11) },
+      { key = "RightArrow", mods = "CMD|OPT", action = navigate_pane("Right", 11) },
+      { key = "UpArrow",    mods = "CMD|OPT", action = navigate_pane("Up", 11) },
+      { key = "DownArrow",  mods = "CMD|OPT", action = navigate_pane("Down", 11) },
+      -- Cmd+Shift+Enter: toggle pane zoom (full-screen within window), or Herdr's
+      { key = "Enter", mods = "CMD|SHIFT", action = herdr_or("\x1b[13;10u", act.TogglePaneZoomState) },
       -- Cmd+Opt+[ / Cmd+Opt+]: rotate/move panes (swap current pane left/right)
       { key = "[", mods = "CMD|OPT", action = act.RotatePanes("CounterClockwise") },
       { key = "]", mods = "CMD|OPT", action = act.RotatePanes("Clockwise") },

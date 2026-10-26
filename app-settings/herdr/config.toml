@@ -6,3 +6,14 @@ status_indicators = "dots"
 # Notify through macOS (terminal-notifier), so it works in any terminal, not just WezTerm
 [ui.toast]
 delivery = "system"
+
+# Cmd keys work only in a terminal that sends them on with the kitty keyboard protocol (in
+# WezTerm, enable_kitty_keyboard; see wezterm.lua). The prefix keys work in any terminal.
+[keys]
+previous_tab = ["cmd+[", "prefix+p"]
+next_tab = ["cmd+]", "prefix+n"]
+focus_pane_left = ["cmd+left", "cmd+alt+left", "prefix+h"]
+focus_pane_right = ["cmd+right", "cmd+alt+right", "prefix+l"]
+focus_pane_up = ["cmd+up", "cmd+alt+up", "prefix+k"]
+focus_pane_down = ["cmd+down", "cmd+alt+down", "prefix+j"]
+zoom = ["cmd+shift+enter", "prefix+z"]
