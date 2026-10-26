@@ -474,7 +474,9 @@ seed_state() {
 poll() {
    local mrs mr key url number author project label agent known
 
-   mrs=$(list_assigned)
+   # set -e doesn't apply in here (poll runs as part of an if), so a failed fetch would
+   # otherwise leave an empty list, and every MR would look unassigned
+   mrs=$(list_assigned) || return 1
    while IFS= read -r mr; do
       [ -n "$mr" ] || continue
       key=$(jq -r .key <<< "$mr")
