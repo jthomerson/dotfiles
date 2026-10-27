@@ -11,6 +11,7 @@ STATE="$STATE_DIR/state.json"
 LOCK="$STATE_DIR/lock"
 PROJECTS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
 RE_REVIEW_PROMPT="/re-review"
+STOPWORDS=" a an the and or of to for in on with by from into is are be this that its "
 
 host=""
 interval=120
@@ -207,7 +208,7 @@ is_idle_pane() {
 # Opens a tab in a folder and starts Claude in it, passing any arguments through to
 # claude. Prints "<tab id> <pane id>".
 start_claude_tab() {
-   local label="$1" agent="$2" dir="$3" created started tab pane
+   local label="$1" agent="$2" dir="$3" created started tab pane right_pane
 
    shift 3
    created=$(herdr tab create --workspace "$workspace_id" --cwd "$dir" --label "$label" --no-focus 2>&1)
@@ -217,6 +218,9 @@ start_claude_tab() {
       log "couldn't open a tab for $label: $created"
       return 1
    fi
+   # Like start-work: Claude on the left, and two shells stacked on the right
+   right_pane=$(herdr pane split "$pane" --direction right --no-focus | jq -r '.result.pane.pane_id')
+   herdr pane split "$right_pane" --direction down --no-focus > /dev/null
 
    # The new shell needs a moment to reach its prompt before Herdr can start the agent
    sleep 2
@@ -256,11 +260,56 @@ get_agent_name() {
 
 # --- Reviews -------------------------------------------------------------------------
 
-start_review() {
-   local key="$1" url="$2" label="$3" agent="$4" opened tab pane
+# Same as get_title_slug in the plugin's review-start.sh, so both name a review's worktree
+# the same way: up to five kebab-case words of the title, without draft markers, commit
+# types, issue numbers, or filler words
+get_title_slug() {
+   local title="$1" word words=()
 
+   title=$(tr '[:upper:]' '[:lower:]' <<< "$title" \
+      | sed -E 's/^(draft|wip)[: ]+//; s/^[a-z]+(\([^)]*\))?!?: *//; s/\(?#[0-9]+\)?//g')
+   for word in $(tr -c 'a-z0-9\n' ' ' <<< "$title"); do
+      if [[ "$STOPWORDS" != *" $word "* ]] && [ "${#words[@]}" -lt 5 ]; then
+         words+=("$word")
+      fi
+   done
+   (IFS=-; echo "${words[*]}")
+}
+
+# Prints the path of the MR's review worktree, creating it with `wt new` if there isn't one
+get_review_worktree() {
+   local mr="$1" label="$2" project number author name existing path errors
+
+   project=$(jq -r .project <<< "$mr")
+   number=$(jq -r .number <<< "$mr")
+   author=$(jq -r .author <<< "$mr")
+   existing=$(list_review_worktrees "$project" "$number" | head -1)
+   if [ -n "$existing" ]; then
+      echo "$existing"
+      return
+   fi
+
+   name="review-$author-$number-$(get_title_slug "$(jq -r .title <<< "$mr")")"
+   show_status "Creating worktree $name..."
+   errors=$(mktemp)
+   if ! path=$(wt new "$project" "$(jq -r .branch <<< "$mr")" --name "$name" < /dev/null 2> "$errors"); then
+      log "couldn't create a worktree for $label: $(tail -1 "$errors")"
+      rm -f "$errors"
+      return 1
+   fi
+   rm -f "$errors"
+   echo "$path"
+}
+
+# Starts Claude inside the review's worktree, so the tab's shell is there after Claude
+# exits, and Claude, which didn't create the worktree, doesn't ask to remove it on exit
+start_review() {
+   local key="$1" mr="$2" label="$3" agent="$4" url worktree opened tab pane
+
+   url=$(jq -r .url <<< "$mr")
    if [ -n "$dry_run" ]; then log "would start a review of $label ($url)"; return; fi
-   opened=$(start_claude_tab "$label" "$agent" "$HOME/code") || return 1
+   worktree=$(get_review_worktree "$mr" "$label") || return 1
+   opened=$(start_claude_tab "$label" "$agent" "$worktree") || return 1
    read -r tab pane <<< "$opened"
    herdr agent prompt "$pane" "/code-review $url" > /dev/null || { log "couldn't send /code-review to $label"; return 1; }
    set_state "$key" "$(jq -n --arg tab "$tab" --arg pane "$pane" --arg label "$label" \
@@ -301,7 +350,7 @@ list_review_worktrees() {
 # running it (in any workspace, so reviews started by hand count too), or else resumed in
 # its old pane if that is open and idle, or else resumed in a new tab
 re_review() {
-   local key="$1" url="$2" label="$3" author="$4" number="$5" agent="$6" project="$7" session tab pane dir opened
+   local key="$1" url="$2" label="$3" author="$4" number="$5" agent="$6" project="$7" mr="$8" session tab pane dir opened
 
    session=$(find_review_session "$project" "$author" "$number" || true)
    if [ -n "$dry_run" ]; then
@@ -310,7 +359,7 @@ re_review() {
    fi
    if [ -z "$session" ]; then
       log "no earlier session found for $label; starting a fresh review"
-      start_review "$key" "$url" "$label" "$agent"
+      start_review "$key" "$mr" "$label" "$agent"
       return
    fi
 
@@ -414,6 +463,7 @@ MR_FIELDS='{
    url: .web_url,
    number: .iid,
    author: .author.username,
+   branch: .source_branch,
    title: (.title | sub("^(draft|wip):\\s*"; ""; "i")),
    project: (.web_url | capture("^https?://[^/]+/(?<p>.+)/-/merge_requests/").p)
 }'
@@ -459,7 +509,7 @@ review_mr_url() {
    IFS=$'\t' read -r label agent <<< "$(describe_mr "$mr")"
    set_state "$key" "$(jq '{url, project, number, author, assigned: true, rereviewPending: false}' <<< "$mr")"
    re_review "$key" "$(jq -r .url <<< "$mr")" "$label" "$(jq -r .author <<< "$mr")" \
-      "$(jq -r .number <<< "$mr")" "$agent" "$(jq -r .project <<< "$mr")"
+      "$(jq -r .number <<< "$mr")" "$agent" "$(jq -r .project <<< "$mr")" "$mr"
 }
 
 seed_state() {
@@ -490,14 +540,14 @@ poll() {
 
       if [ "$known" = "false" ]; then
          set_state "$key" "$(jq '{url, project, number, author}' <<< "$mr")"
-         if ! start_review "$key" "$url" "$label" "$agent"; then
+         if ! start_review "$key" "$mr" "$label" "$agent"; then
             # Forget it, so the next poll tries again
             delete_state "$key"
             log "failed to start review of $label; will retry"
          fi
       elif [ "$(get_state "$key" assigned)" = "false" ] || [ "$(get_state "$key" rereviewPending)" = "true" ]; then
          set_state "$key" '{"assigned": true}'
-         re_review "$key" "$url" "$label" "$author" "$number" "$agent" "$project" || log "failed to re-review $label"
+         re_review "$key" "$url" "$label" "$author" "$number" "$agent" "$project" "$mr" || log "failed to re-review $label"
       else
          update_tab_label "$key" "$label" "$agent"
       fi

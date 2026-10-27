@@ -46,11 +46,12 @@ get_title_slug() {
 
 main() {
    local input prompt transcript host project number mr author title branch name root
-   local existing main_clone context title_json="null"
+   local existing main_clone context title_json="null" cwd top=""
 
    input=$(cat)
    prompt=$(jq -r '.prompt // empty' <<< "$input")
    transcript=$(jq -r '.transcript_path // empty' <<< "$input")
+   cwd=$(jq -r '.cwd // empty' <<< "$input")
 
    [[ "$prompt" =~ ^[[:space:]]*/[a-z:-]*review([[:space:]]|$) ]] || exit 0
    [[ "$prompt" =~ https?://([^/[:space:]]+)/([^[:space:]]+)/-/merge_requests/([0-9]+) ]] || exit 0
@@ -68,8 +69,16 @@ main() {
    root=$(get_config_path root '~/code/worktrees')
    main_clone="$(get_config_path codeRoot '~/code')/$project"
    existing=$(find "$root/$project" -mindepth 1 -maxdepth 1 -type d -name "review-*-$number-*" 2>/dev/null | head -1)
+   if [ -n "$cwd" ]; then
+      top=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)
+   fi
 
-   if [ -n "$existing" ]; then
+   # review-watch starts Claude inside the review's worktree. Entering it again with
+   # EnterWorktree would make Claude ask to keep or remove it on every exit.
+   if [ -n "$existing" ] && [ "$top" = "$existing" ]; then
+      name=$(basename "$existing")
+      context="This session is already in this review's worktree, $existing. Stay in it: don't call EnterWorktree. Run \`git pull --ff-only\` to pick up new commits. Skip the naming steps in the worktrees skill."
+   elif [ -n "$existing" ]; then
       name=$(basename "$existing")
       context="This review's worktree already exists: $existing. Call EnterWorktree with that path, then run \`git pull --ff-only\` there to pick up new commits. Skip the naming steps in the worktrees skill."
    elif [ -d "$main_clone" ]; then

@@ -50,8 +50,9 @@ Without that context (the hook couldn't read the MR), do it yourself:
 2. Build the name: `review-`, the author's username, the MR number, and two to five words
    from the title in kebab-case. For example, `review-johndoe-9988-reformat-number-strings`.
 3. If a worktree for this MR already exists (`ls -d ~/code/worktrees/*/*/review-*-<number>-*`
-   matching the author and repo), reuse it: call EnterWorktree with its path, run
-   `git pull --ff-only` there to pick up new commits, and skip step 4.
+   matching the author and repo), reuse it: call EnterWorktree with its path (unless the
+   session is already in it), run `git pull --ff-only` there to pick up new commits, and
+   skip step 4.
 4. Write the request file with `repo` set to the project path (for example
    `acme/webapp`, which `wt` resolves under `~/code`) and `branch` set to the source branch.
    Then call EnterWorktree with the name.
