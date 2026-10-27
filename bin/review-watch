@@ -386,6 +386,7 @@ clean_up() {
    fi
 
    while IFS= read -r worktree; do
+      show_status "Removing $worktree..."
       if wt rm "$worktree" >/dev/null 2>&1; then
          log "removed $worktree"
       else
