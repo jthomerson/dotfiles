@@ -194,6 +194,11 @@ get_agent_status() {
       '[.result.agents[] | select(.pane_id == $pane) | .agent_status] | first // empty'
 }
 
+get_pane_session() {
+   herdr agent list | jq -r --arg pane "$1" \
+      '[.result.agents[] | select(.pane_id == $pane) | .agent_session.value] | first // empty'
+}
+
 # The pane running a Claude session, in any workspace: prints "<tab id> <pane id>"
 get_session_pane() {
    herdr agent list | jq -r --arg session "$1" \
@@ -422,16 +427,21 @@ update_tab_label() {
 # Closes a finished review's tab and removes its worktree. Waits while Claude is still busy
 # in the tab, since closing it would kill the session (say, while it cleans up after merging).
 clean_up() {
-   local key="$1" label="$2" project="$3" number="$4" tab worktree agent_status failed=""
+   local key="$1" label="$2" project="$3" number="$4" tab pane session worktree agent_status failed=""
 
    if [ -n "$dry_run" ]; then log "would clean up $label"; return; fi
-   agent_status=$(get_agent_status "$(get_state "$key" pane)")
+   pane=$(get_state "$key" pane)
+   agent_status=$(get_agent_status "$pane")
    if [ -n "$agent_status" ] && [ "$agent_status" != "idle" ]; then
       return 0
    fi
    tab=$(get_state "$key" tab)
    if [ -n "$tab" ]; then
+      session=$(get_pane_session "$pane")
       herdr tab close "$tab" > /dev/null 2>&1 || true
+      if [ -n "$session" ]; then
+         log "closed $label's idle Claude session; resume it with \`claude --resume $session\`"
+      fi
    fi
 
    while IFS= read -r worktree; do
