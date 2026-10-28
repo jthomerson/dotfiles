@@ -32,6 +32,12 @@ local function navigate_pane(direction, modifier)
    return herdr_or("\x1b[1;" .. modifier .. arrow_codes[direction], act.ActivatePaneDirection(direction))
 end
 
+-- The Gogh port of Tomorrow Night Bright sets bright black (ANSI 8) to the background
+-- color, which hides any text printed in gray, such as a CLI prompt's choices. Use
+-- Tomorrow's own comment gray instead.
+local color_scheme = wezterm.color.get_builtin_schemes()["Tomorrow Night Bright (Gogh)"]
+color_scheme.brights[1] = "#969896"
+
 config = wezterm.config_builder()
 
 config = {
@@ -44,7 +50,8 @@ config = {
    send_composed_key_when_right_alt_is_pressed = false,
    window_decorations = "RESIZE", -- disable the title bar but enable the resizable border
    default_cursor_style = "BlinkingBar",
-   color_scheme = "Tomorrow Night Bright (Gogh)",
+   color_schemes = { ["Tomorrow Night Bright (readable gray)"] = color_scheme },
+   color_scheme = "Tomorrow Night Bright (readable gray)",
    -- font = wezterm.font("JetBrains Mono"), -- default
    -- font = wezterm.font("JetBrains Mono", { weight = "Bold" }),
    -- font = wezterm.font("ComicShannsMono Nerd Font", {weight="Regular", stretch="Normal", style="Normal"}),
