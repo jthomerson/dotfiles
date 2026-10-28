@@ -213,7 +213,7 @@ is_idle_pane() {
 # Opens a tab in a folder and starts Claude in it, passing any arguments through to
 # claude. Prints "<tab id> <pane id>".
 start_claude_tab() {
-   local label="$1" agent="$2" dir="$3" created started tab pane right_pane
+   local label="$1" agent="$2" dir="$3" created started tab pane right_pane bottom_pane
 
    shift 3
    created=$(herdr tab create --workspace "$workspace_id" --cwd "$dir" --label "$label" --no-focus 2>&1)
@@ -225,7 +225,7 @@ start_claude_tab() {
    fi
    # Like start-work: Claude on the left, and two shells stacked on the right
    right_pane=$(herdr pane split "$pane" --direction right --no-focus | jq -r '.result.pane.pane_id')
-   herdr pane split "$right_pane" --direction down --no-focus > /dev/null
+   bottom_pane=$(herdr pane split "$right_pane" --direction down --no-focus | jq -r '.result.pane.pane_id')
 
    # The new shell needs a moment to reach its prompt before Herdr can start the agent
    sleep 2
@@ -234,7 +234,18 @@ start_claude_tab() {
       herdr tab close "$tab" > /dev/null 2>&1 || true
       return 1
    fi
+   run_standards "$bottom_pane" "$dir"
    echo "$tab $pane"
+}
+
+# The first `npm run standards` in a new worktree takes minutes while ESLint builds its
+# cache, so start it now and it's done by the time I look at the review
+run_standards() {
+   local pane="$1" dir="$2"
+
+   [ -n "$pane" ] || return 0
+   jq -e '.scripts.standards' "$dir/package.json" > /dev/null 2>&1 || return 0
+   herdr pane run "$pane" "[ -f .nvmrc ] && nvm use > /dev/null; nice -n 10 npm run standards" > /dev/null 2>&1 || true
 }
 
 # The repo's alias from the worktrees config, uppercased (MPS), or else its name
