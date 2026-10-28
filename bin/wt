@@ -44,11 +44,12 @@ NAMING
    The folder is the branch with "/" replaced by "-":
       jdoe/1234-add-login  ->  <root>/acme/webapp/jdoe-1234-add-login
 
-SETUP (new runs all three; sync runs only step 1)
+SETUP (new runs all four; sync runs only step 1)
    1. Link each private file listed in the config from the main clone (or copy it, for
       files that must not be symlinks, such as code that gets imported)
-   2. Clone the main clone's node_modules with copy-on-write (instant, no extra disk)
-   3. Run `nvm use && npm i` to reconcile dependencies
+   2. Initialize every git submodule, borrowing objects from the main clone's copy
+   3. Clone the main clone's node_modules with copy-on-write (instant, no extra disk)
+   4. Run `nvm use && npm i` to reconcile dependencies
 
 SAFETY
    rm refuses if the worktree has uncommitted changes or commits that aren't on the
@@ -232,6 +233,25 @@ apply_private_files() {
    done < <(jq -r '.copy // [] | .[]' <<< "$repo_config")
 }
 
+# Borrows each submodule's objects from the main clone's copy (git alternates), so a new
+# worktree neither downloads them again nor stores a second copy
+init_submodules() {
+   local main="$1" worktree="$2" path reference
+
+   [ -f "$worktree/.gitmodules" ] || return 0
+   while IFS= read -r path; do
+      # An uninitialized submodule resolves to the superproject's git dir, which isn't one
+      # to borrow from
+      reference=$(git -C "$main/$path" rev-parse --absolute-git-dir 2>/dev/null || true)
+      say "   initializing submodule $path"
+      if [[ "$reference" == "$main/.git/modules/"* ]]; then
+         git -C "$worktree" submodule update --quiet --init --reference "$reference" -- "$path" >&2
+      else
+         git -C "$worktree" submodule update --quiet --init -- "$path" >&2
+      fi || say "   submodule $path failed; the worktree is ready otherwise"
+   done < <(git -C "$worktree" config -f .gitmodules --get-regexp '\.path$' | cut -d' ' -f2-)
+}
+
 clone_node_modules() {
    local main="$1" worktree="$2" dir rel
 
@@ -307,6 +327,7 @@ cmd_new() {
 
    say "Setting up $worktree"
    apply_private_files "$main" "$worktree"
+   init_submodules "$main" "$worktree"
    clone_node_modules "$main" "$worktree"
    install_dependencies "$worktree"
    echo "$worktree"
