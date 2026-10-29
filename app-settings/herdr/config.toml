@@ -7,6 +7,10 @@ status_indicators = "dots"
 [ui.toast]
 delivery = "system"
 
+# Herdr plays its own sounds with afplay, so macOS notification settings can't mute them
+[ui.sound]
+enabled = false
+
 # Cmd keys work only in a terminal that sends them on with the kitty keyboard protocol (in
 # WezTerm, enable_kitty_keyboard; see wezterm.lua). The prefix keys work in any terminal.
 [keys]
