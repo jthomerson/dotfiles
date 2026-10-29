@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# terminal-notifier-auto-purge: send a notification with terminal-notifier, then remove
+# it from Notification Center after TERMINAL_NOTIFIER_TTL_SECONDS (default 120).
+#
+# macOS keeps notifications in Notification Center until they're cleared and has no
+# expiry setting. Herdr runs `terminal-notifier` by name with no way to point it at
+# another program, so `bin/terminal-notifier` links here to shadow the Homebrew one on
+# PATH. Calls that manage groups themselves pass straight through.
+
+set -uo pipefail
+
+REAL=/opt/homebrew/bin/terminal-notifier
+TTL_SECONDS="${TERMINAL_NOTIFIER_TTL_SECONDS:-120}"
+
+for arg in "$@"; do
+   case "$arg" in
+      -group|-remove|-list)
+         exec "$REAL" "$@"
+         ;;
+   esac
+done
+
+group="auto-purge-$$-$(date +%s)"
+"$REAL" "$@" -group "$group"
+status=$?
+
+nohup bash -c "sleep $TTL_SECONDS; '$REAL' -remove '$group'" </dev/null >/dev/null 2>&1 &
+exit $status

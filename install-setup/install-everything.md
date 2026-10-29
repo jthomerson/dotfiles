@@ -502,6 +502,7 @@ per repo, with a tab per worktree or review. It runs inside WezTerm.
 brew install herdr terminal-notifier
 mkdir -p ~/.config/herdr
 ln -sfn ~/code/jthomerson/dotfiles/app-settings/herdr/config.toml ~/.config/herdr/config.toml
+ln -sfn ~/code/jthomerson/dotfiles/bin/terminal-notifier-auto-purge ~/.local/bin/terminal-notifier
 herdr integration install claude
 ```
 
@@ -513,6 +514,13 @@ Notifications go through macOS (`delivery = "system"` in `config.toml`), so they
 any terminal. Herdr sends them with `terminal-notifier`, which needs permission: allow it
 in System Settings → Notifications. Herdr notifies when an agent in another tab finishes
 or needs me, and `ctrl+b` then `o` jumps to that agent.
+
+Herdr runs `terminal-notifier` by name, so `bin/terminal-notifier-auto-purge` shadows it
+(through `bin/terminal-notifier` and the `~/.local/bin` link above, which the Herdr server
+sees even when it started without the dotfiles `bin` on `PATH`). It removes each
+notification from Notification Center after two minutes, since macOS has no expiry
+setting. Herdr plays its sounds itself with `afplay`, so they're muted in `config.toml`
+rather than in System Settings.
 
 Key bindings:
 
