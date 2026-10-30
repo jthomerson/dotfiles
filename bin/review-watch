@@ -439,7 +439,7 @@ update_tab_label() {
 # Closes a finished review's tab and removes its worktree. Waits while Claude is still busy
 # in the tab, since closing it would kill the session (say, while it cleans up after merging).
 clean_up() {
-   local key="$1" label="$2" project="$3" number="$4" tab pane session worktree agent_status failed=""
+   local key="$1" label="$2" project="$3" number="$4" tab pane session worktree agent_status alias failed=""
 
    if [ -n "$dry_run" ]; then log "would clean up $label"; return; fi
    pane=$(get_state "$key" pane)
@@ -456,8 +456,9 @@ clean_up() {
       fi
    fi
 
+   alias=$(get_repo_alias "$project")
    while IFS= read -r worktree; do
-      show_status "Removing $worktree..."
+      show_status "Removing $alias $(basename "$worktree")..."
       if wt rm "$worktree" >/dev/null 2>&1; then
          log "removed $worktree"
       else
