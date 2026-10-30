@@ -68,10 +68,11 @@ log() {
 }
 
 # The one-line status shown between log messages. Only in a terminal; it is rewritten in
-# place, so it never scrolls the log.
+# place, so it never scrolls the log. Cut to the terminal's width, since \r can't return
+# to the first row of a wrapped line.
 show_status() {
    [ -t 1 ] || return 0
-   printf '\r\033[K%s' "$*"
+   printf '\r\033[K%.*s' "$(tput cols)" "$*"
 }
 
 clear_status() {
@@ -220,7 +221,7 @@ start_claude_tab() {
    tab=$(jq -r '.result.tab.tab_id // empty' <<< "$created" 2>/dev/null)
    pane=$(jq -r '.result.root_pane.pane_id // empty' <<< "$created" 2>/dev/null)
    if [ -z "$tab" ] || [ -z "$pane" ]; then
-      log "couldn't open a tab for $label: $created"
+      log "couldn't open a tab for $label: $created" >&2
       return 1
    fi
    # Like start-work: Claude on the left, and two shells stacked on the right
@@ -230,7 +231,7 @@ start_claude_tab() {
    # The new shell needs a moment to reach its prompt before Herdr can start the agent
    sleep 2
    if ! started=$(herdr agent start "$agent" --kind claude --pane "$pane" --timeout 60000 -- "$@" 2>&1); then
-      log "couldn't start Claude for $label: $started"
+      log "couldn't start Claude for $label: $started" >&2
       herdr tab close "$tab" > /dev/null 2>&1 || true
       return 1
    fi
@@ -309,7 +310,7 @@ get_review_worktree() {
    show_status "Creating worktree $name..."
    errors=$(mktemp)
    if ! path=$(wt new "$project" "$(jq -r .branch <<< "$mr")" --name "$name" < /dev/null 2> "$errors"); then
-      log "couldn't create a worktree for $label: $(tail -1 "$errors")"
+      log "couldn't create a worktree for $label: $(tail -1 "$errors")" >&2
       rm -f "$errors"
       return 1
    fi
