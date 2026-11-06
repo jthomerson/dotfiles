@@ -11,6 +11,7 @@ STATE="$STATE_DIR/state.json"
 LOCK="$STATE_DIR/lock"
 PROJECTS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
 RE_REVIEW_PROMPT="/re-review"
+QUIET_SECONDS=$((12 * 60 * 60))
 STOPWORDS=" a an the and or of to for in on with by from into is are be this that its "
 
 host=""
@@ -20,6 +21,7 @@ seed=""
 once=""
 review_url=""
 dry_run=""
+doctor=""
 username=""
 workspace_id=""
 
@@ -34,15 +36,22 @@ Every poll it lists the open merge requests assigned to me (other than my own) a
    * re-reviews one that was reassigned back to me: sends `/re-review` to its review
      session, wherever that is open in Herdr, or resumes the session in a new tab
    * cleans up one that was merged or closed: closes its tab and removes its review
-     worktree with `wt rm`
+     worktree with `wt rm`. A Claude session still open in the tab has to be idle, with
+     no messages for 12 hours, first, and so does any agent running inside the worktree.
+     If `wt rm` refuses, it forces the removal, and deletes the local branch, when the
+     worktree has no uncommitted changes and its HEAD is a version of the merge request.
 
 Given a merge request URL, it does the same for that one merge request, right away, whether
 or not it's assigned to me: a fresh review, or a re-review if it already has a review
 session.
 
+`doctor` goes through the review worktrees that `wt rm` refused to remove. It shows why
+each one is stuck and its merge request, then asks whether to force-remove it.
+
 USAGE
    review-watch [--host <gitlab host>] [options]
    review-watch [--host <gitlab host>] [options] <merge request URL>
+   review-watch [--host <gitlab host>] [--dry-run] doctor
 
 OPTIONS
    --host <host>          GitLab host to poll (default: the one host glab is logged in to)
@@ -204,6 +213,12 @@ get_pane_session() {
 get_session_pane() {
    herdr agent list | jq -r --arg session "$1" \
       '[.result.agents[] | select(.agent_session.value == $session) | "\(.tab_id) \(.pane_id)"] | first // empty'
+}
+
+# Prints one JSON line per agent running inside a folder, in any workspace
+list_worktree_agents() {
+   herdr agent list | jq -c --arg dir "$1" '.result.agents[]
+      | select([.cwd, .foreground_cwd] | map(strings) | any(. == $dir or startswith($dir + "/")))'
 }
 
 # True when the pane is still open but nothing is running in it, so Claude can start there
@@ -436,15 +451,104 @@ update_tab_label() {
    log "renamed tab $tab to $label"
 }
 
-# Closes a finished review's tab and removes its worktree. Waits while Claude is still busy
-# in the tab, since closing it would kill the session (say, while it cleans up after merging).
+# The epoch time of a session's last message. Other entries don't count: Claude also writes
+# to the transcript while nobody is chatting (an away summary, for one).
+get_last_message_time() {
+   find "$PROJECTS" -mindepth 2 -maxdepth 2 -name "$1.jsonl" -exec cat {} + \
+      | jq -Rrn '[inputs | fromjson? | objects | select(.type == "user" or .type == "assistant")
+         | .timestamp | strings | sub("\\.[0-9]+Z$"; "Z") | fromdate] | max // empty'
+}
+
+# True when a session has had no messages for 12 hours. A session whose messages can't be
+# found counts as active, since closing it might end a conversation.
+is_session_quiet() {
+   local last_message
+
+   [ -n "$1" ] || return 1
+   last_message=$(get_last_message_time "$1")
+   [ -n "$last_message" ] && [ "$(($(date +%s) - last_message))" -ge "$QUIET_SECONDS" ]
+}
+
+# True when the tab has to stay open: closing it would kill the session (say, while it
+# cleans up after merging). Idle isn't enough, since I may still be chatting with it, or
+# not have seen its last response.
+is_review_session_active() {
+   local pane="$1" agent_status
+
+   agent_status=$(get_agent_status "$pane")
+   [ -n "$agent_status" ] || return 1
+   [ "$agent_status" = "idle" ] || return 0
+   ! is_session_quiet "$(get_pane_session "$pane")"
+}
+
+# The date GitLab saw a commit as a version of the MR, if it did
+get_mr_version_date() {
+   local key="$1" sha="$2"
+
+   glab api --hostname "$host" --paginate "projects/${key%%!*}/merge_requests/${key##*!}/versions" 2> /dev/null \
+      | jq -r --arg sha "$sha" '.[] | select(.head_commit_sha == $sha) | .created_at' | head -1 || true
+}
+
+# True when HEAD is a version of the MR and nothing is uncommitted. Its commits may no longer
+# be on the remote, because the author force pushed over them, but they aren't local work.
+is_clean_mr_version() {
+   local key="$1" worktree="$2"
+
+   [ -z "$(git -C "$worktree" status --porcelain)" ] || return 1
+   [ -n "$(get_mr_version_date "$key" "$(git -C "$worktree" rev-parse HEAD)")" ]
+}
+
+# `wt rm --force` keeps a branch with commits that aren't on the remote. A branch at a version
+# of the MR has nothing worth keeping, since GitLab still has those commits.
+force_remove_worktree() {
+   local key="$1" worktree="$2" common_dir head branch version
+
+   common_dir=$(git -C "$worktree" rev-parse --path-format=absolute --git-common-dir)
+   head=$(git -C "$worktree" rev-parse HEAD)
+   branch=$(git -C "$worktree" symbolic-ref --quiet --short HEAD || true)
+   version=$(get_mr_version_date "$key" "$head")
+
+   wt rm --force "$worktree" < /dev/null || return 1
+   [ -n "$version" ] && [ -n "$branch" ] || return 0
+   if git -C "$common_dir" branch -D "$branch" > /dev/null 2>&1; then
+      echo "Deleted local branch $branch: GitLab has its commits as a version of the MR"
+   fi
+}
+
+remove_review_worktree() {
+   local key="$1" worktree="$2"
+
+   wt rm "$worktree" > /dev/null 2>&1 && return 0
+   is_clean_mr_version "$key" "$worktree" || return 1
+   log "forcing removal of $worktree and its branch: its unpushed commits are a version of its MR"
+   force_remove_worktree "$key" "$worktree" > /dev/null 2>&1
+}
+
+# Checks the review's own pane and any agent inside its worktrees, since a session resumed in
+# another pane would lose its worktree
+is_any_review_session_active() {
+   local pane="$1" project="$2" number="$3" worktree candidate
+
+   while IFS= read -r candidate; do
+      if is_review_session_active "$candidate"; then
+         return 0
+      fi
+   done < <(
+      echo "$pane"
+      while IFS= read -r worktree; do
+         list_worktree_agents "$worktree" | jq -r .pane_id
+      done < <(list_review_worktrees "$project" "$number")
+   )
+   return 1
+}
+
+# Closes a finished review's tab and removes its worktree, unless a session is active
 clean_up() {
-   local key="$1" label="$2" project="$3" number="$4" tab pane session worktree agent_status alias failed=""
+   local key="$1" label="$2" project="$3" number="$4" tab pane session worktree alias failed=""
 
    if [ -n "$dry_run" ]; then log "would clean up $label"; return; fi
    pane=$(get_state "$key" pane)
-   agent_status=$(get_agent_status "$pane")
-   if [ -n "$agent_status" ] && [ "$agent_status" != "idle" ]; then
+   if is_any_review_session_active "$pane" "$project" "$number"; then
       return 0
    fi
    tab=$(get_state "$key" tab)
@@ -459,7 +563,7 @@ clean_up() {
    alias=$(get_repo_alias "$project")
    while IFS= read -r worktree; do
       show_status "Removing $alias $(basename "$worktree")..."
-      if wt rm "$worktree" >/dev/null 2>&1; then
+      if remove_review_worktree "$key" "$worktree"; then
          log "removed $worktree"
       else
          failed=1
@@ -599,6 +703,139 @@ check_finished() {
    fi
 }
 
+# --- Doctor --------------------------------------------------------------------------
+
+# Prints "<state key>\t<worktree>" for each worktree cleanup couldn't remove
+list_stuck_worktrees() {
+   local key worktree
+
+   while IFS= read -r key; do
+      while IFS= read -r worktree; do
+         [ -z "$worktree" ] || printf '%s\t%s\n' "$key" "$worktree"
+      done < <(list_review_worktrees "$(get_state "$key" project)" "$(get_state "$key" number)")
+   done < <(jq -r 'to_entries[] | select(.value.cleanupRefused == true) | .key' "$STATE")
+}
+
+print_first_lines() {
+   local lines="$1" count
+
+   count=$(wc -l <<< "$lines" | tr -d ' ')
+   head -10 <<< "$lines" | sed 's/^/      /'
+   if [ "$count" -gt 10 ]; then
+      echo "      ...and $((count - 10)) more"
+   fi
+}
+
+describe_uncommitted_changes() {
+   local changes="$1"
+
+   [ -n "$changes" ] || return 0
+   echo "   $(wc -l <<< "$changes" | tr -d ' ') uncommitted change(s):"
+   print_first_lines "$changes"
+   if ! grep -qv '^ D' <<< "$changes"; then
+      echo "   Every change is a deleted file, which looks like an interrupted removal."
+   fi
+}
+
+# Says whether GitLab saw the worktree's commit as a version of the MR. If it did, the
+# author replaced that version with a force push, so the commits aren't anyone's local work.
+describe_unpushed_commits() {
+   local worktree="$1" key="$2" mr_head="$3" commits head version
+
+   commits=$(git -C "$worktree" log --format='%h %an, %ad: %s' --date=short HEAD --not --remotes)
+   [ -n "$commits" ] || return 0
+   echo "   $(wc -l <<< "$commits" | tr -d ' ') commit(s) not on the remote:"
+   print_first_lines "$commits"
+
+   head=$(git -C "$worktree" rev-parse HEAD)
+   [ "$head" != "$mr_head" ] || return 0
+   version=$(get_mr_version_date "$key" "$head")
+   if [ -n "$version" ]; then
+      echo "   GitLab lists ${head:0:9} as an earlier version of the MR, from ${version%%T*}; the MR ended at ${mr_head:0:9}."
+      return
+   fi
+   echo "   GitLab doesn't list ${head:0:9} as a version of the MR, so these may be local work."
+}
+
+# `wt rm --force` deletes submodules with the worktree, and `wt rm` doesn't check them
+describe_submodules() {
+   git -C "$1" submodule --quiet foreach --recursive \
+      'echo "   Submodule $displaypath: $(git status --porcelain | wc -l | tr -d " ") uncommitted," \
+         "$(git rev-list --count HEAD --not --remotes) not on its remote"' 2> /dev/null || true
+}
+
+is_worktree_blocked() {
+   [ -n "$(git -C "$1" status --porcelain)" ] || [ -n "$(git -C "$1" rev-list HEAD --not --remotes)" ]
+}
+
+# Prints what I need to decide whether a stuck worktree can go
+describe_stuck_worktree() {
+   local key="$1" worktree="$2" project number author mr session agents
+
+   project=$(get_state "$key" project)
+   number=$(get_state "$key" number)
+   author=$(get_state "$key" author)
+   show_status "Reading $(basename "$worktree")..."
+   mr=$(glab api --hostname "$host" "projects/${key%%!*}/merge_requests/$number" 2> /dev/null) || mr='{}'
+   session=$(find_review_session "$project" "$author" "$number" || true)
+   agents=$(list_worktree_agents "$worktree" 2> /dev/null | jq -r '"\(.tab_id) (\(.agent_status))"' | paste -sd ' ' - || true)
+   clear_status
+
+   echo
+   echo "$(get_repo_alias "$project") !$number: $(jq -r '.title // "(title unavailable)"' <<< "$mr")"
+   echo "   Repo:     $project"
+   echo "   Author:   $author"
+   echo "   MR:       $(get_state "$key" url) ($(jq -r '.state // "state unknown"' <<< "$mr"))"
+   echo "   Worktree: $worktree"
+   if [ -n "$session" ]; then
+      echo "   Session:  claude --resume $session (run it in the worktree)"
+   else
+      echo "   Session:  none found"
+   fi
+   [ -z "$agents" ] || echo "   Open in:  $agents; removing the worktree would pull it out from under them"
+   echo "   Why it's stuck:"
+   if ! is_worktree_blocked "$worktree"; then
+      echo "   Nothing blocks it now; the next poll should remove it."
+      return
+   fi
+   describe_uncommitted_changes "$(git -C "$worktree" status --porcelain)"
+   describe_unpushed_commits "$worktree" "$key" "$(jq -r '.sha // empty' <<< "$mr")"
+   describe_submodules "$worktree"
+}
+
+remove_stuck_worktree() {
+   local key="$1" worktree="$2"
+
+   force_remove_worktree "$key" "$worktree" || return 1
+   if [ -z "$(list_review_worktrees "$(get_state "$key" project)" "$(get_state "$key" number)")" ]; then
+      delete_state "$key"
+   fi
+}
+
+# Takes the lock only to remove a worktree, not while waiting for my answer: a watcher that
+# waits too long for the lock gives up and exits.
+run_doctor() {
+   local stuck key worktree answer
+
+   stuck=$(list_stuck_worktrees)
+   if [ -z "$stuck" ]; then
+      echo "No stuck review worktrees."
+      return
+   fi
+   while IFS=$'\t' read -r key worktree <&3; do
+      describe_stuck_worktree "$key" "$worktree"
+      if [ -n "$dry_run" ] || ! is_worktree_blocked "$worktree"; then
+         continue
+      fi
+      read -r -p "Force-remove this worktree? [y/N/q] " answer || answer=q
+      case "$answer" in
+         y|Y) with_lock remove_stuck_worktree "$key" "$worktree" || echo "Couldn't remove $worktree" ;;
+         q|Q) return 0 ;;
+         *) echo "Kept $worktree" ;;
+      esac
+   done 3<<< "$stuck"
+}
+
 main() {
    local last_poll
 
@@ -611,6 +848,7 @@ main() {
          --once) once=1; shift ;;
          --dry-run) dry_run=1; once=1; shift ;;
          -h|--help) usage; exit 0 ;;
+         doctor) doctor=1; shift ;;
          http://*|https://*) review_url="$1"; once=1; shift ;;
          *) die "unknown option: $1 (see --help)" ;;
       esac
@@ -627,6 +865,11 @@ main() {
 
    if [ -n "$seed" ]; then
       seed_state
+      exit 0
+   fi
+
+   if [ -n "$doctor" ]; then
+      run_doctor
       exit 0
    fi
 
