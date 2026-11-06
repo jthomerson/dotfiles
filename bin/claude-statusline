@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 # Claude Code status line: the account, the model, how much of the context is used, and
-# how much of the 5-hour and 7-day usage limits is gone, with when each resets. Claude Code
-# runs it with the session's JSON on stdin.
+# how much of the 5-hour and 7-day usage limits is gone, with when each resets, plus a link
+# to the merge request when the session is in a review worktree. Claude Code runs it with
+# the session's JSON on stdin.
 
 set -euo pipefail
 
@@ -40,6 +41,22 @@ describe_limit() {
    fi
 }
 
+# " · !5180" linked to the merge request, when the directory is a review worktree, which
+# the worktrees skill names review-<author>-<number>-<description>. Reads the name and
+# the git remote instead of asking GitLab, so the status line stays fast.
+describe_review() {
+   local dir="$1" worktree number remote project url
+
+   worktree=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 0
+   [[ "$(basename "$worktree")" =~ ^review-[^-]+-([0-9]+)- ]] || return 0
+   number="${BASH_REMATCH[1]}"
+   remote=$(git -C "$worktree" remote get-url origin 2>/dev/null) || return 0
+   [[ "$remote" =~ ^git@([^:]+):(.+)\.git$ ]] || return 0
+   project="${BASH_REMATCH[2]}"
+   url="https://${BASH_REMATCH[1]}/${project}/-/merge_requests/${number}"
+   printf ' · \033]8;;%s\a!%s\033]8;;\a' "$url" "$number"
+}
+
 main() {
    local account model context
 
@@ -58,6 +75,7 @@ main() {
    fi
    describe_limit 5h five_hour '%-I:%M%p'
    describe_limit 7d seven_day '%a %-I%p'
+   describe_review "$(get_field .workspace.current_dir)"
    echo
 }
 
