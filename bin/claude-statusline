@@ -3,11 +3,15 @@
 # Claude Code status line: the account, the model, how much of the context is used, and
 # how much of the 5-hour and 7-day usage limits is gone, with when each resets, plus a link
 # to the merge request when the session is in a review worktree. Claude Code runs it with
-# the session's JSON on stdin.
+# the session's JSON on stdin. The session's cost sits at the right edge.
 
 set -euo pipefail
 
 input=$(cat)
+
+# Claude Code indents the status line by an amount the script can't read, so stop short of
+# the edge to keep the cost from wrapping
+RIGHT_MARGIN=4
 
 get_field() {
    jq -r "$1 // empty" <<< "$input"
@@ -57,7 +61,31 @@ describe_review() {
    printf ' · \033]8;;%s\a!%s\033]8;;\a' "$url" "$number"
 }
 
-main() {
+# How many columns the text takes up on screen, not counting color and link escapes
+get_visible_width() {
+   printf '%s' "$1" \
+      | sed -e $'s/\033\\[[0-9;]*m//g' -e $'s/\033]8;;[^\a]*\a//g' \
+      | LC_ALL=en_US.UTF-8 wc -m \
+      | tr -d ' '
+}
+
+# Spaces and the session's cost, to right-align it after the given text, or " · $1.23" when
+# the terminal is too narrow for that
+describe_cost() {
+   local text="$1" cost label gap
+
+   cost=$(get_field .cost.total_cost_usd)
+   [ -n "$cost" ] || return 0
+   label=$(printf '$%.2f' "$cost")
+   gap=$(( ${COLUMNS:-0} - RIGHT_MARGIN - $(get_visible_width "$text") - ${#label} ))
+   if [ "$gap" -lt 2 ]; then
+      printf ' · %s' "$label"
+      return
+   fi
+   printf '%*s%s' "$gap" '' "$label"
+}
+
+describe_session() {
    local account model context
 
    # The config dir's name without ".claude-": ~/.claude-work is "work", and
@@ -76,7 +104,13 @@ main() {
    describe_limit 5h five_hour '%-I:%M%p'
    describe_limit 7d seven_day '%a %-I%p'
    describe_review "$(get_field .workspace.current_dir)"
-   echo
+}
+
+main() {
+   local session
+
+   session=$(describe_session)
+   printf '%s%s\n' "$session" "$(describe_cost "$session")"
 }
 
 main
