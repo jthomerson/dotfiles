@@ -1,5 +1,5 @@
 format = """
-$directory\
+${custom.worktree}\
 $git_branch\
 $git_status\
 $fill\
@@ -21,6 +21,15 @@ $character"""
 
 add_newline = true
 palette = "nord"
+
+# Inside a git worktree, show the repo alias and worktree name (configured in
+# ~/code/.worktrees.json) instead of a path that would wrap the prompt
+[custom.worktree]
+command = 'wt prompt || starship module directory'
+when = true
+shell = ['bash', '--noprofile', '--norc']
+unsafe_no_escape = true
+format = '$output'
 
 [directory]
 style = 'bold cyan'
