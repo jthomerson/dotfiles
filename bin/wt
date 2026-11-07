@@ -28,9 +28,13 @@ USAGE
                           the config or add a file to the main clone)
    wt doctor [repo]       Report broken private-file links, files missing from the main
                           clone, and worktrees outside the root
-   wt prompt              Print "<ALIAS> <worktree>" (or "<ALIAS> (main clone)") for a
+   wt prompt [--branch <command>] [--same-branch <command>]
+                          Print "<ALIAS> <worktree>" (or "<ALIAS> (main clone)") for a
                           shell prompt, in the repo's configured color. Fails in any
                           other directory, so a prompt can fall back to showing it.
+                          Runs the --branch command to render the branch, or the
+                          --same-branch command when the worktree's name already says
+                          what the branch is.
 
 ARGUMENTS
    <repo>       An alias you define in the config, a path to a main clone, or
@@ -586,8 +590,21 @@ ansi_bold() {
 
 # Prints "<ALIAS> <worktree> " or "<ALIAS> (main clone) " for a prompt. Fails outside a
 # linked worktree unless the main clone is a repo in the config.
+#
+# A worktree made by `wt` is named after its branch, so the branch is only worth showing
+# when it differs: --branch <command> runs <command> to render it in that case (and always
+# in a main clone), and --same-branch <command> runs <command> instead when the name
+# already says what the branch is. The configured branchPrefix is dropped from the name.
 cmd_prompt() {
-   local git_dir common toplevel main alias label color name
+   local branch_command="" same_branch_command="" git_dir common toplevel main alias label color name branch prefix
+
+   while [ $# -gt 0 ]; do
+      case "$1" in
+         --branch) branch_command="$2"; shift 2 ;;
+         --same-branch) same_branch_command="$2"; shift 2 ;;
+         *) die "unknown option: $1" ;;
+      esac
+   done
 
    { read -r git_dir && read -r common && read -r toplevel; } < <(
       git rev-parse --path-format=absolute --git-dir --git-common-dir --show-toplevel 2>/dev/null
@@ -595,8 +612,14 @@ cmd_prompt() {
 
    main=$(dirname "$common")
    alias=$(get_repo_alias "$main")
+   branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || echo "(detached)")
+   prefix=$(get_config_value '.branchPrefix' '')
    if [ "$git_dir" != "$common" ]; then
       name=$(basename "$toplevel")
+      if [ "${branch//\//-}" = "$name" ]; then
+         branch_command="$same_branch_command"
+      fi
+      name="${name#"${prefix//\//-}"}"
    elif [ -n "$alias" ]; then
       name="(main clone)"
    else
@@ -605,7 +628,11 @@ cmd_prompt() {
 
    label=$(tr '[:lower:]' '[:upper:]' <<< "${alias:-$(basename "$main")}")
    color=$(get_repo_config "$main" | jq -r '.color // empty')
-   printf '%s%s %s \e[0m\n' "$(ansi_bold "$color")" "$label" "$name"
+   printf '%s%s %s \e[0m' "$(ansi_bold "$color")" "$label" "$name"
+   if [ -n "$branch_command" ]; then
+      bash -c "$branch_command"
+   fi
+   echo
 }
 
 main() {
@@ -618,7 +645,7 @@ main() {
       rm) cmd_rm "$@" ;;
       sync) cmd_sync "$@" ;;
       doctor) cmd_doctor "$@" ;;
-      prompt) cmd_prompt ;;
+      prompt) cmd_prompt "$@" ;;
       -h|--help|help|"") usage ;;
       *) die "unknown command: $command (see wt --help)" ;;
    esac

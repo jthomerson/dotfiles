@@ -1,7 +1,7 @@
 format = """
 ${custom.worktree}\
-$git_branch\
-$git_status\
+$git_commit\
+$git_state\
 $fill\
 $python\
 $lua\
@@ -16,20 +16,32 @@ ${custom.env_group_other}\
 $docker_context\
 $jobs\
 $cmd_duration\
+$time\
 $line_break\
+$status\
 $character"""
 
 add_newline = true
 palette = "nord"
 
 # Inside a git worktree, show the repo alias and worktree name (configured in
-# ~/code/.worktrees.json) instead of a path that would wrap the prompt
+# ~/code/.worktrees.json) instead of a path that would wrap the prompt. The branch is
+# shown as ≡ when the worktree name already says what it is.
 [custom.worktree]
-command = 'wt prompt || starship module directory'
+command = 'wt prompt --branch "starship module git_branch" --same-branch "starship module custom.same_branch" || { starship module directory; starship module git_branch; }'
 when = true
 shell = ['bash', '--noprofile', '--norc']
+# A cold git cache in a large repo can push the first prompt past the 500ms default
+ignore_timeout = true
 unsafe_no_escape = true
 format = '$output'
+
+# Rendered by custom.worktree, not by the prompt format, so it is never shown on its own
+[custom.same_branch]
+command = 'true'
+when = true
+style = 'bold purple'
+format = '[on](white) [ ≡ ]($style)'
 
 [directory]
 style = 'bold cyan'
@@ -49,9 +61,13 @@ style = 'bold purple'
 symbol = ' '
 format = '[on](white) [$symbol$branch ]($style)'
 
-[git_status]
-style = 'bold red'
-format = '([$all_status$ahead_behind]($style) )'
+[git_commit]
+style = 'bold green'
+format = '[\($hash$tag\)]($style) '
+
+[git_state]
+style = 'bold yellow'
+format = '[\($state( $progress_current/$progress_total)\)]($style) '
 
 [fill]
 symbol = ' '
@@ -124,7 +140,19 @@ format = '[$symbol]($style)'
 [cmd_duration]
 min_time = 950
 style = 'fg:gray'
-format = '[$duration]($style)'
+format = '[$duration]($style) '
+
+[time]
+disabled = false
+style = 'fg:gray'
+time_format = '%H:%M'
+format = '[$time]($style)'
+
+[status]
+disabled = false
+style = 'bold red'
+symbol = '✖ '
+format = '[$symbol$status( $signal_name)]($style) '
 
 [palettes.nord]
 dark_blue = '#5E81AC'
