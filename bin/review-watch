@@ -663,7 +663,9 @@ poll() {
       author=$(jq -r .author <<< "$mr")
       project=$(jq -r .project <<< "$mr")
       IFS=$'\t' read -r label agent <<< "$(describe_mr "$mr")"
-      known=$(jq -r --arg key "$key" 'has($key)' "$STATE")
+      # An entry without `assigned` is a review whose start was interrupted (say, the
+      # watcher was stopped mid-start), so it counts as unseen and the start is retried
+      known=$(jq -r --arg key "$key" '.[$key].assigned != null' "$STATE")
 
       if [ "$known" = "false" ]; then
          set_state "$key" "$(jq '{url, project, number, author}' <<< "$mr")"
