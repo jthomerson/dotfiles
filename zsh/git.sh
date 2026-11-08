@@ -55,3 +55,15 @@ grd() {
    echo "Using merge base ${MERGE_BASE} (merge-base of ${BASE_BRANCH} and ${LOCAL_BRANCH}) to compare ${LOCAL_BRANCH} to ${REMOTE_BRANCH}"
    git range-diff "${MERGE_BASE}" "${REMOTE_BRANCH}" "${LOCAL_BRANCH}"
 }
+
+# Lets `wt cd` change this shell's directory, which the wt script can't do itself
+wt() {
+   local dir
+
+   if [ "$1" != "cd" ]; then
+      command wt "$@"
+      return
+   fi
+   dir=$(command wt "$@") || return
+   cd "$dir"
+}

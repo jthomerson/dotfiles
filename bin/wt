@@ -21,6 +21,9 @@ USAGE
                           Prints the worktree's path.
    wt ls [repo]           List worktrees: name, branch, uncommitted changes, unpushed commits
    wt ls --all            List every worktree under the root, grouped by group and repo
+   wt cd [repo] <worktree>
+                          Change to a worktree's directory. The zsh `wt` function does the
+                          cd; the script itself prints the path.
    wt rm <worktree> [--force]
                           Remove a worktree, and its local branch unless that branch
                           has commits that aren't on the remote
@@ -85,6 +88,7 @@ EXAMPLES
    cd "$(wt new acme/api jdoe/fix-timeouts --base origin/release-2)"
    wt new webapp feature/new-search --name review-johndoe-512-new-search
    wt ls webapp
+   wt cd webapp jdoe-1234-add-login
    wt rm jdoe-1234-add-login
 EOF
 }
@@ -445,6 +449,22 @@ get_worktree() {
    echo "$path"
 }
 
+# A child process can't change its parent shell's directory, so this prints the path for
+# the zsh `wt` function to cd into
+cmd_cd() {
+   local path
+
+   case $# in
+      1) get_worktree "$1" ;;
+      2)
+         path="$(get_root)/$(get_repo_key "$(get_main_clone "$1")")/$2"
+         [ -d "$path" ] || die "no worktree named $2 for $1"
+         echo "$path"
+         ;;
+      *) die "usage: wt cd [repo] <worktree>" ;;
+   esac
+}
+
 cmd_rm() {
    local spec="" force="" worktree main branch dirty unpushed
 
@@ -642,6 +662,7 @@ main() {
    case "$command" in
       new) cmd_new "$@" ;;
       ls) cmd_ls "$@" ;;
+      cd) cmd_cd "$@" ;;
       rm) cmd_rm "$@" ;;
       sync) cmd_sync "$@" ;;
       doctor) cmd_doctor "$@" ;;
