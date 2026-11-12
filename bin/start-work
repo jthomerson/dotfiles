@@ -12,7 +12,8 @@ start-work: create a worktree and open it in Herdr
 Creates the worktree with `wt new` (or reuses it, if it already exists) and opens it as a
 Herdr workspace under its repo's workspace, then focuses it. Its tab gets Claude on the
 left, in a session named after the workspace, and two shells on the right, one above the
-other. If the worktree is already open in Herdr, it focuses that workspace instead.
+other. If the worktree has an .nvmrc, every pane runs `nvm use` (or `nvm install`) first.
+If the worktree is already open in Herdr, it focuses that workspace instead.
 
 USAGE
    start-work [<repo> <branch>] [--label <name>] [--base <ref>] [--name <name>]
@@ -83,16 +84,25 @@ get_agent_name() {
 
 # Splits the workspace's first pane into Claude on the left and two shells on the right,
 # one above the other, then starts Claude there with the workspace's name as its session
-# name
+# name. If the worktree has an .nvmrc, every pane first switches to its Node version.
 set_up_panes() {
-   local workspace="$1" label="$2" claude_pane right_pane
+   local workspace="$1" label="$2" path="$3" claude_pane right_pane bottom_pane pane
 
    claude_pane=$(herdr pane list --workspace "$workspace" | jq -r '.result.panes[0].pane_id')
    right_pane=$(herdr pane split "$claude_pane" --direction right --no-focus | jq -r '.result.pane.pane_id')
-   herdr pane split "$right_pane" --direction down --no-focus > /dev/null
+   bottom_pane=$(herdr pane split "$right_pane" --direction down --no-focus | jq -r '.result.pane.pane_id')
 
    # The new shell needs a moment to reach its prompt before Herdr can start Claude
    sleep 2
+   if [ -f "$path/.nvmrc" ]; then
+      for pane in "$claude_pane" "$right_pane" "$bottom_pane"; do
+         herdr pane run "$pane" "{ nvm use || nvm install; } && printf 'nvm %s\n' ready" > /dev/null
+      done
+      # Herdr starts Claude only at a shell prompt, so wait for nvm to finish. The printf
+      # format keeps the typed command itself from matching.
+      herdr pane wait-output "$claude_pane" --match "nvm ready" --source recent --timeout 300000 > /dev/null \
+         || die "nvm couldn't switch Node versions in $label"
+   fi
    herdr agent start "$(get_agent_name "$label")" --kind claude --pane "$claude_pane" --timeout 60000 \
       -- --name "$label" > /dev/null || die "couldn't start Claude in $label"
    echo "Started Claude in $label"
@@ -149,7 +159,7 @@ main() {
    workspace=$(herdr worktree open --cwd "$main_clone" --path "$path" --label "$label" --focus \
       | jq -r '.result.workspace.workspace_id')
    echo "Opened $label at $path"
-   set_up_panes "$workspace" "$label"
+   set_up_panes "$workspace" "$label" "$path"
 }
 
 main "$@"
