@@ -27,6 +27,11 @@ USAGE
    wt rm <worktree> [--force]
                           Remove a worktree, and its local branch unless that branch
                           has commits that aren't on the remote
+   wt clean [repo]        List worktrees whose branch was merged (also by squash or rebase)
+                          or whose remote branch was deleted (if no commits are lost),
+                          then offer to remove them and their local branches, all at once
+                          or one by one. Keeps any with uncommitted changes.
+                          Without a repo, checks every repo in the config.
    wt sync [repo]         Re-apply private files to existing worktrees (after you change
                           the config or add a file to the main clone)
    wt doctor [repo]       Report broken private-file links, files missing from the main
@@ -533,6 +538,126 @@ cmd_sync() {
    done <<< "$repos"
 }
 
+# Prints why a worktree's branch is safe to clean up, or nothing if it isn't. A merge
+# request that was squashed or rebased leaves the branch's own commits off the default
+# branch, so an ancestry check alone misses most merged branches.
+get_cleanup_reason() {
+   local main="$1" branch="$2" default="$3" ahead base squashed upstream track unpushed
+
+   IFS=' ' read -r upstream track < <(
+      git -C "$main" for-each-ref --format='%(upstream) %(upstream:track)' "refs/heads/$branch"
+   )
+   ahead=$(git -C "$main" rev-list --count "$default..$branch")
+   if [ "$ahead" = "0" ]; then
+      # A new branch with no commits yet is also behind the default branch; only a branch
+      # that was pushed can have been merged
+      if [ -n "$upstream" ]; then
+         echo "merged"
+      fi
+      return
+   fi
+   if ! git -C "$main" cherry "$default" "$branch" | grep -q '^+'; then
+      echo "rebased onto $default"
+      return
+   fi
+   base=$(git -C "$main" merge-base "$default" "$branch")
+   squashed=$(git -C "$main" commit-tree "$branch^{tree}" -p "$base" -m "wt clean squash check")
+   if git -C "$main" cherry "$default" "$squashed" | grep -q '^-'; then
+      echo "squashed into $default"
+      return
+   fi
+   # A deleted remote branch may only mean its merge request was closed, so its commits
+   # are safe to lose only if another remote branch still has them
+   unpushed=$(git -C "$main" rev-list --count "$branch" --not --remotes)
+   if [ "$track" = "[gone]" ] && [ "$unpushed" = "0" ]; then
+      echo "remote branch deleted"
+   fi
+}
+
+cmd_clean() {
+   local main path branch default reason dirty repos candidates="" answer mode label removals="" kept=""
+
+   repos=$(list_target_repos "${1:-}")
+   while IFS= read -r main; do
+      say "Fetching origin for $(get_repo_key "$main")"
+      git -C "$main" fetch --quiet --prune origin || say "wt: fetch failed; using what $main already has"
+      default=$(get_default_ref "$main")
+      while read -r path branch; do
+         if [ ! -d "$path" ] || [ "$branch" = "(detached)" ]; then
+            continue
+         fi
+         reason=$(get_cleanup_reason "$main" "$branch" "$default")
+         [ -n "$reason" ] || continue
+         dirty=$(git -C "$path" status --porcelain | wc -l | tr -d ' ')
+         candidates+="$main"$'\t'"$path"$'\t'"$branch"$'\t'"$dirty"$'\t'"$reason"$'\n'
+      done < <(list_worktrees "$main")
+   done <<< "$repos"
+
+   if [ -z "$candidates" ]; then
+      say "No worktrees to clean up"
+      return
+   fi
+   printf '%-8s %-50s %-45s %9s  %s\n' "REPO" "WORKTREE" "BRANCH" "CHANGED" "REASON"
+   while IFS=$'\t' read -r main path branch dirty reason; do
+      printf '%-8.8s %-50.50s %-45.45s %9s  %s\n' \
+         "$(get_repo_label "$(get_repo_key "$main")")" "$(basename "$path")" "$branch" "$dirty" "$reason"
+   done <<< "${candidates%$'\n'}"
+
+   [ -t 0 ] || return 0
+   read -r -p "Remove these worktrees and their local branches? Ones with changes are kept. [y/N/each] " answer
+   case "$answer" in
+      [yY]*) mode="all" ;;
+      [eE]*) mode="each" ;;
+      *) return 0 ;;
+   esac
+
+   # Removing a worktree is slow, so ask every question before removing any. The list
+   # comes in on fd 3 so that stdin stays free for the questions.
+   while IFS=$'\t' read -r -u 3 main path branch dirty reason; do
+      label="$(get_repo_label "$(get_repo_key "$main")") $(basename "$path")"
+      if [ "$dirty" != "0" ]; then
+         kept+="$label ($dirty uncommitted change(s))"$'\n'
+         [ "$mode" = "each" ] || say "Kept $label ($dirty uncommitted change(s))"
+         continue
+      fi
+      if [ "$mode" = "each" ]; then
+         read -r -p "Remove $label ($reason)? [y/N] " answer
+         if [[ ! "$answer" =~ ^[yY] ]]; then
+            kept+="$label"$'\n'
+            continue
+         fi
+      fi
+      removals+="$main"$'\t'"$path"$'\t'"$branch"$'\t'"$label"$'\n'
+   done 3<<< "${candidates%$'\n'}"
+
+   if [ -z "$removals" ]; then
+      say "Nothing to remove"
+      return
+   fi
+   if [ "$mode" = "each" ]; then
+      say ""
+      say "Will remove:"
+      while IFS=$'\t' read -r main path branch label; do
+         say "   $label"
+      done <<< "${removals%$'\n'}"
+      if [ -n "$kept" ]; then
+         say "Will keep:"
+         while IFS= read -r label; do
+            say "   $label"
+         done <<< "${kept%$'\n'}"
+      fi
+      read -r -p "Go ahead? [y/N] " answer
+      [[ "$answer" =~ ^[yY] ]] || return 0
+   fi
+
+   while IFS=$'\t' read -r main path branch label; do
+      # --force lets git remove worktrees that contain submodules
+      git -C "$main" worktree remove --force "$path" >&2
+      git -C "$main" branch -D "$branch" > /dev/null
+      say "Removed $label and branch $branch"
+   done <<< "${removals%$'\n'}"
+}
+
 cmd_doctor() {
    local main path branch repo_config entry problems=0 root repos key
 
@@ -666,6 +791,7 @@ main() {
       rm) cmd_rm "$@" ;;
       sync) cmd_sync "$@" ;;
       doctor) cmd_doctor "$@" ;;
+      clean) cmd_clean "$@" ;;
       prompt) cmd_prompt "$@" ;;
       -h|--help|help|"") usage ;;
       *) die "unknown command: $command (see wt --help)" ;;
