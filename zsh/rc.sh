@@ -64,7 +64,7 @@ alias n='echo "Node: $(node --version)"; echo "NPM:  $(npm --version)"'
 alias npmGlobalList="npm -g list | grep '^\(├─┬\|└─┬\)'"
 
 # Directory-based aliases
-alias dotfiles='pushd ~/code/jthomerson/dotfiles'
+alias dotfiles='cd ~/code/jthomerson/dotfiles'
 
 # Initialize completion system before sourcing files that register completions
 autoload -Uz compinit && compinit

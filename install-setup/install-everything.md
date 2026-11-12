@@ -74,7 +74,7 @@ This repo has all the necessary dotfiles in it.
 
 ```
 mkdir -p ~/code/jthomerson
-pushd ~/code/jthomerson
+cd ~/code/jthomerson
 git clone git@github.com:jthomerson/dotfiles.git
 ```
 
