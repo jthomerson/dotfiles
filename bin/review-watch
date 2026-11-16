@@ -471,13 +471,14 @@ is_session_quiet() {
 
 # True when the tab has to stay open: closing it would kill the session (say, while it
 # cleans up after merging). Idle isn't enough, since I may still be chatting with it, or
-# not have seen its last response.
+# not have seen its last response. Herdr reports "done" instead of "idle" until the pane is
+# focused, and tabs open unfocused, so both count as waiting for input.
 is_review_session_active() {
    local pane="$1" agent_status
 
    agent_status=$(get_agent_status "$pane")
    [ -n "$agent_status" ] || return 1
-   [ "$agent_status" = "idle" ] || return 0
+   [ "$agent_status" = "idle" ] || [ "$agent_status" = "done" ] || return 0
    ! is_session_quiet "$(get_pane_session "$pane")"
 }
 
