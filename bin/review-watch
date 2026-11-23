@@ -245,6 +245,7 @@ start_claude_tab() {
 
    # The new shell needs a moment to reach its prompt before Herdr can start the agent
    sleep 2
+   use_repo_node "$dir" "$pane" "$right_pane" "$bottom_pane"
    if ! started=$(herdr agent start "$agent" --kind claude --pane "$pane" --timeout 60000 -- "$@" 2>&1); then
       log "couldn't start Claude for $label: $started" >&2
       herdr tab close "$tab" > /dev/null 2>&1 || true
@@ -261,7 +262,23 @@ run_standards() {
 
    [ -n "$pane" ] || return 0
    jq -e '.scripts.standards' "$dir/package.json" > /dev/null 2>&1 || return 0
-   herdr pane run "$pane" "[ -f .nvmrc ] && nvm use > /dev/null; nice -n 10 npm run standards" > /dev/null 2>&1 || true
+   herdr pane run "$pane" "nice -n 10 npm run standards" > /dev/null 2>&1 || true
+}
+
+# Like start-work: if the folder has an .nvmrc, switches every pane's shell to its Node
+# version, then waits for the first pane, since Herdr starts Claude only at a shell prompt.
+# The marker is unique because a reused pane can still show an earlier run's output, and
+# the printf format keeps the typed command itself from matching.
+use_repo_node() {
+   local dir="$1" marker="$RANDOM$RANDOM" pane
+
+   shift
+   [ -f "$dir/.nvmrc" ] || return 0
+   for pane in "$@"; do
+      herdr pane run "$pane" "{ nvm use || nvm install; } && printf 'nvm ready %s\n' $marker" > /dev/null
+   done
+   herdr pane wait-output "$1" --match "nvm ready $marker" --source recent --timeout 300000 > /dev/null \
+      || log "nvm couldn't switch Node versions in $dir" >&2
 }
 
 # The repo's alias from the worktrees config, uppercased (MPS), or else its name
@@ -413,6 +430,7 @@ re_review() {
    pane=$(get_state "$key" pane)
    if is_idle_pane "$pane"; then
       herdr pane run "$pane" "cd $(printf '%q' "$dir")" > /dev/null
+      use_repo_node "$dir" "$pane"
       if ! herdr agent start "$agent" --kind claude --pane "$pane" --timeout 60000 -- --resume "$session" > /dev/null 2>&1; then
          set_state "$key" '{"rereviewPending": true}'
          log "couldn't resume $label in its old tab; will retry"
