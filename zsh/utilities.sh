@@ -159,7 +159,7 @@ pbrun() {
 #   logrun npm test
 #   logrun 'make build 2>&1 | grep -v warning' # quote pipes/redirects
 #
-# Logs go in the current directory. Set LOGRUN_DIR to send them elsewhere.
+# Logs go in /tmp. Set LOGRUN_DIR to send them elsewhere.
 
 logrun() {
    if [ $# -eq 0 ]; then
@@ -167,7 +167,7 @@ logrun() {
       return 2
    fi
 
-   local dir="${LOGRUN_DIR:-$PWD}"
+   local dir="${LOGRUN_DIR:-/tmp}"
    mkdir -p "$dir"
    local logName="logrun-$(date +%Y%m%d-%H%M%S)-$$.log"
    local log="$dir/$logName"
@@ -203,6 +203,6 @@ logrun() {
 
    { command -v pbcopy >/dev/null && printf '%s' "$log" | pbcopy; }
    echo
-   echo "log: $logName"
+   echo "log: $log"
    return "$rc"
 }
